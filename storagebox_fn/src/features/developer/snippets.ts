@@ -37,13 +37,15 @@ const storagebox = new StorageBox({
   apiSecret: process.env.STORAGEBOX_SECRET!,
 });
 
-// Node: fs.readFileSync → Blob, or a File from an <input type="file"> in the browser
-const [file] = await storagebox.files.upload(myFile, {
+// Browser: a File from <input type="file">. Node: { data: await readFile(path), filename }
+const file = await storagebox.files.upload(myFile, {
   collection: "contracts/2026",
-  access: "PRIVATE",
   tags: ["legal", "signed"],
 });
-console.log(file.publicId, file.url);`,
+console.log(file.publicId, file.url);
+
+// Images: resize / convert straight from the permanent link
+const thumbnail = storagebox.url(file, { width: 400, format: "webp" });`,
       python: `import os, requests
 
 auth = (os.environ["STORAGEBOX_KEY"], os.environ["STORAGEBOX_SECRET"])
