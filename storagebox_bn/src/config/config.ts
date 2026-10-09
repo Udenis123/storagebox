@@ -44,7 +44,9 @@ export const config = {
     secretKey: required('S3_SECRET_KEY'),
   },
   limits: {
-    maxUploadBytes: Number(optional('MAX_UPLOAD_MB', '100')) * BYTES_PER_MB,
+    maxUploadBytes: Number(optional('MAX_UPLOAD_MB', '5120')) * BYTES_PER_MB,
+    /** Large uploads on slow connections outlast Node's default 5-minute request timeout. */
+    uploadTimeoutMs: Number(optional('UPLOAD_TIMEOUT_MINUTES', '60')) * 60 * 1000,
     defaultQuotaBytes: Number(optional('DEFAULT_QUOTA_GB', '5')) * 1024 * BYTES_PER_MB,
     rateLimitPerMinute: Number(optional('RATE_LIMIT_PER_MINUTE', '300')),
   },

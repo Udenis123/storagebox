@@ -5,7 +5,10 @@ export const API_DOCS_URL = `${API_BASE_URL}/docs`;
 export const HOSTED_API_URL = "https://storagebox.urbinaryhub.com";
 export const SDK_PACKAGE = "storagebox";
 
-export const MAX_UPLOAD_MB = 100;
+export const MAX_UPLOAD_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB ?? 5120);
+const MB_PER_GB = 1024;
+/** "5 GB" rather than "5120 MB". */
+export const MAX_UPLOAD_LABEL = MAX_UPLOAD_MB >= MB_PER_GB ? `${+(MAX_UPLOAD_MB / MB_PER_GB).toFixed(1)} GB` : `${MAX_UPLOAD_MB} MB`;
 export const MAX_FILES_PER_UPLOAD = 20;
 export const FILES_PAGE_SIZE = 30;
 

@@ -3,7 +3,7 @@ import { Info } from "lucide-react";
 import { CodeBlock } from "@/components/shared/CopyField";
 import { credentialsEnv } from "@/features/developer/credentials";
 import { buildSnippets, SNIPPET_LANGUAGES, type SnippetLanguage } from "@/features/developer/snippets";
-import { API_BASE_URL, MAX_FILES_PER_UPLOAD, MAX_UPLOAD_MB, SDK_PACKAGE } from "@/lib/constants";
+import { API_BASE_URL, MAX_FILES_PER_UPLOAD, MAX_UPLOAD_LABEL, SDK_PACKAGE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export const DOC_SECTIONS = [
@@ -40,7 +40,7 @@ const TRANSFORMS = [
 ];
 
 const ERRORS = [
-  ["400", "E1000 · E4001 · E4002", `Invalid input, an unsupported file type, or a file over ${MAX_UPLOAD_MB} MB`],
+  ["400", "E1000 · E4001 · E4002", `Invalid input, an unsupported file type, or a file over ${MAX_UPLOAD_LABEL}`],
   ["401", "E2006 · E2010", "Wrong API key or secret, or a key from another cloud"],
   ["402", "E4003", "Storage is full — delete files or ask for more space in the dashboard"],
   ["403", "E2007 · E5000 · E5001", "Read-only key used to write, private file without a signature, or expired link"],
@@ -205,7 +205,7 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
       <DocSection id="upload" title="Upload files">
         <Prose>
           <p>
-            Send files as multipart form data, up to {MAX_FILES_PER_UPLOAD} files and {MAX_UPLOAD_MB} MB each — or send a JSON body with a{" "}
+            Send files as multipart form data, up to {MAX_FILES_PER_UPLOAD} files and {MAX_UPLOAD_LABEL} each — or send a JSON body with a{" "}
             <code>url</code> and StorageBox downloads the file for you. Collections are created on the fly.
           </p>
         </Prose>

@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { createReadStream } from 'fs';
 import { Prisma, UsageKind } from '@prisma/client';
 import status from 'http-status';
 import sharp from 'sharp';
@@ -6,11 +7,12 @@ import prisma from '@/config/prisma';
 import logger from '@/config/logger';
 import { signedUrl } from '@/lib/deliveryUrl';
 import { extensionOf, extensionsForKind, isAllowedExtension, isTransformable, mimeForExtension } from '@/lib/fileTypes';
-import { deleteObjects, putObject } from '@/lib/storage';
+import { deleteObjects, putObjectStream } from '@/lib/storage';
+import { sha256File } from '@/lib/tempFiles';
 import { parseTransform, TransformParseError } from '@/lib/transform';
 import { AccountContext, FileAccess, FileDto, FileKind } from '@/types/api';
 import ApiError from '@/utils/ApiError';
-import { randomSuffix, sha256Hex } from '@/utils/crypto';
+import { randomSuffix } from '@/utils/crypto';
 import { toFileDto } from '@/utils/dto';
 import { ERROR_CODES } from '@/utils/errorCodes';
 import { Paginated, ServiceResult } from '@/utils/response';
@@ -23,8 +25,10 @@ import { dispatchWebhooks } from './webhookService';
 const PUBLIC_ID_BASE_LENGTH = 40;
 const DEFAULT_SIGNED_URL_SECONDS = 60 * 60;
 
+/** A file already spooled to local disk; the caller removes `path` afterwards. */
 export interface UploadSource {
-  buffer: Buffer;
+  path: string;
+  size: number;
   originalName: string;
   mime?: string;
 }
@@ -113,10 +117,10 @@ async function resolveTargetCollection(ctx: AccountContext, options: UploadOptio
   return null;
 }
 
-async function imageDimensions(buffer: Buffer, ext: string): Promise<{ width?: number; height?: number }> {
+async function imageDimensions(filePath: string, ext: string): Promise<{ width?: number; height?: number }> {
   if (!isTransformable(ext)) return {};
   try {
-    const metadata = await sharp(buffer).metadata();
+    const metadata = await sharp(filePath).metadata();
     return { width: metadata.width, height: metadata.height };
   } catch (error) {
     logger.warn('Could not read image dimensions', error);
@@ -140,7 +144,9 @@ async function storeOne(
 
   const mime = mimeForExtension(ext);
   const storageKey = `${ctx.accountId}/${randomUUID()}.${ext}`;
-  await putObject(storageKey, source.buffer, mime);
+  const checksum = await sha256File(source.path);
+  const dimensions = await imageDimensions(source.path, ext);
+  await putObjectStream(storageKey, createReadStream(source.path), mime);
 
   try {
     const file = await prisma.file.create({
@@ -151,19 +157,19 @@ async function storeOne(
         originalName: source.originalName,
         mime,
         ext,
-        sizeBytes: BigInt(source.buffer.length),
-        checksum: sha256Hex(source.buffer),
+        sizeBytes: BigInt(source.size),
+        checksum,
         access: options.access ?? collection?.access ?? FileAccess.PUBLIC,
         storageKey,
         tags: options.tags ?? [],
         uploadedById: ctx.userId,
         apiKeyId: ctx.apiKeyId,
-        ...(await imageDimensions(source.buffer, ext)),
+        ...dimensions,
       },
       include: withCollection,
     });
     const dto = toFileDto(file, ctx.cloudName);
-    recordUsage(ctx.accountId, UsageKind.UPLOAD, source.buffer.length, ctx.apiKeyId);
+    recordUsage(ctx.accountId, UsageKind.UPLOAD, source.size, ctx.apiKeyId);
     logActivity(ctx, 'file.uploaded', source.originalName);
     dispatchWebhooks(ctx.accountId, 'file.uploaded', dto);
     return dto;
@@ -186,7 +192,7 @@ export async function uploadFiles(
     throw new ApiError(status.BAD_REQUEST, 'public_id can only be set when uploading a single file', ERROR_CODES.VALIDATION_ERROR);
   }
 
-  await assertWithinQuota(ctx.accountId, sources.reduce((sum, source) => sum + source.buffer.length, 0));
+  await assertWithinQuota(ctx.accountId, sources.reduce((sum, source) => sum + source.size, 0));
   const collection = await resolveTargetCollection(ctx, options);
 
   const uploaded: FileDto[] = [];

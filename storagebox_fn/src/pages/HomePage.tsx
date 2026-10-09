@@ -7,13 +7,13 @@ import { buildSnippets, SNIPPET_LANGUAGES, type SnippetLanguage } from "@/featur
 import { LibraryMock, SignedLinkMock, TransformMock, UploadMock } from "@/features/marketing/mocks";
 import { SiteFooter, SiteHeader } from "@/features/marketing/SiteChrome";
 import { useHashScroll } from "@/hooks/useHashScroll";
-import { API_BASE_URL, MAX_FILES_PER_UPLOAD, MAX_UPLOAD_MB, SDK_PACKAGE } from "@/lib/constants";
+import { API_BASE_URL, MAX_FILES_PER_UPLOAD, MAX_UPLOAD_LABEL, SDK_PACKAGE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 const DISPLAY = "font-semibold tracking-[-0.035em] text-balance";
 
 const FACTS = [
-  { value: `${MAX_UPLOAD_MB} MB`, label: "per file" },
+  { value: MAX_UPLOAD_LABEL, label: "per file" },
   { value: String(MAX_FILES_PER_UPLOAD), label: "files per upload" },
   { value: "7 days", label: "longest signed link" },
   { value: "WebP · AVIF", label: "images on the fly" },
@@ -57,7 +57,7 @@ const STEPS = [
 const FAQ = [
   {
     question: "What can I store?",
-    answer: `Documents (PDF, Word, Excel, PowerPoint, text, CSV), images, audio, video and zip archives — up to ${MAX_UPLOAD_MB} MB per file.`,
+    answer: `Documents (PDF, Word, Excel, PowerPoint, text, CSV), images, audio, video and zip archives — up to ${MAX_UPLOAD_LABEL} per file.`,
   },
   {
     question: "Why does an administrator approve accounts?",

@@ -11,9 +11,10 @@ async function start(): Promise<void> {
   await connectValkey();
   await ensureBucket();
   await ensureAdmin();
-  createApp().listen(config.port, () => {
+  const server = createApp().listen(config.port, () => {
     logger.info(`StorageBox API listening on ${config.publicUrl} (docs at /docs)`);
   });
+  server.requestTimeout = config.limits.uploadTimeoutMs;
 }
 
 async function shutdown(signal: string): Promise<void> {

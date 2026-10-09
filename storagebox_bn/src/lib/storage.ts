@@ -7,10 +7,13 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { config } from '@/config/config';
 import logger from '@/config/logger';
 
 const DELETE_BATCH_SIZE = 1000;
+const MULTIPART_PART_BYTES = 16 * 1024 * 1024;
+const MULTIPART_CONCURRENCY = 4;
 
 const client = new S3Client({
   endpoint: config.s3.endpoint,
@@ -36,6 +39,16 @@ export async function ensureBucket(): Promise<void> {
 
 export async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
   await client.send(new PutObjectCommand({ Bucket: config.s3.bucket, Key: key, Body: body, ContentType: contentType }));
+}
+
+/** Streams in parts, so file size is bounded by the bucket rather than by memory. */
+export async function putObjectStream(key: string, body: Readable, contentType: string): Promise<void> {
+  await new Upload({
+    client,
+    params: { Bucket: config.s3.bucket, Key: key, Body: body, ContentType: contentType },
+    partSize: MULTIPART_PART_BYTES,
+    queueSize: MULTIPART_CONCURRENCY,
+  }).done();
 }
 
 export async function getObject(key: string, range?: string): Promise<StoredObject> {

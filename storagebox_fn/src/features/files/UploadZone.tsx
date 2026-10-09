@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useStorageHealth } from "@/features/storage/hooks";
 import { useStorageUpgrade } from "@/features/storage/upgradeContext";
 import { ApiRequestError } from "@/lib/api";
-import { ALLOWED_FILE_ACCEPT, MAX_FILES_PER_UPLOAD, MAX_UPLOAD_MB } from "@/lib/constants";
+import { ALLOWED_FILE_ACCEPT, MAX_FILES_PER_UPLOAD, MAX_UPLOAD_LABEL, MAX_UPLOAD_MB } from "@/lib/constants";
 import { formatBytes } from "@/lib/format";
 import { queryKeys } from "@/lib/queryKeys";
 import type { FileAccess } from "@/lib/types";
@@ -47,7 +47,7 @@ export function UploadZone({ collectionId, collectionLabel, access }: UploadZone
 
       const runOne = async ({ file, task }: (typeof queued)[number]) => {
         if (file.size > MAX_UPLOAD_BYTES) {
-          patchTask(task.id, { status: "error", error: `Larger than ${MAX_UPLOAD_MB} MB` });
+          patchTask(task.id, { status: "error", error: `Larger than ${MAX_UPLOAD_LABEL}` });
           return;
         }
         try {
@@ -116,7 +116,7 @@ export function UploadZone({ collectionId, collectionLabel, access }: UploadZone
         <CloudUpload className="size-10 text-primary" />
         <span className="text-base font-semibold md:text-lg">Drop files here or click to browse</span>
         <span className="text-sm text-muted-foreground md:text-base">
-          Into <strong className="text-foreground">{collectionLabel}</strong> · PDF, Word, Excel, images, video… up to {MAX_UPLOAD_MB} MB each
+          Into <strong className="text-foreground">{collectionLabel}</strong> · PDF, Word, Excel, images, video… up to {MAX_UPLOAD_LABEL} each
         </span>
       </button>
       <input

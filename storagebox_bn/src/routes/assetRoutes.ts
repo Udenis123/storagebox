@@ -14,7 +14,7 @@ import {
   updateFileHandler,
   uploadFilesHandler,
 } from '@/controllers/fileController';
-import { fileUpload } from '@/middleware/upload';
+import { acceptUploads } from '@/middleware/upload';
 import validation from '@/middleware/validation';
 import * as schemas from '@/validations/storageboxValidation';
 
@@ -36,7 +36,7 @@ export function collectionRoutes(idParam: string, write: RequestHandler = passTh
 export function fileRoutes(refParam: ':id' | ':publicId', write: RequestHandler = passThrough): Router {
   const router = Router();
   router.get('/', validation(schemas.listFilesQuerySchema, 'query'), listFilesHandler);
-  router.post('/', write, fileUpload.any(), validation(schemas.uploadSchema), uploadFilesHandler);
+  router.post('/', write, ...acceptUploads, validation(schemas.uploadSchema), uploadFilesHandler);
   router.post('/bulk-delete', write, validation(schemas.bulkDeleteSchema), bulkDeleteFilesHandler);
   router.get(`/${refParam}`, getFileHandler);
   router.patch(`/${refParam}`, write, validation(schemas.updateFileSchema), updateFileHandler);

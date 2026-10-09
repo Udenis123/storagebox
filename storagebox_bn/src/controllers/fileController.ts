@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import status from 'http-status';
 import { fetchRemoteFile } from '@/lib/remoteFetch';
+import { removeTempFiles } from '@/lib/tempFiles';
 import {
   createSignedLink,
   deleteFiles,
@@ -19,17 +20,17 @@ import { sendResponse } from '@/utils/response';
 /** Dashboard routes address files by `:id`; the developer API addresses them by `:publicId`. */
 const fileRef = (req: Request): FileRef => (req.params.publicId ? { publicId: param(req, 'publicId') } : { id: param(req, 'id') });
 
-async function uploadSources(req: Request): Promise<UploadSource[]> {
-  const files = (req.files as Express.Multer.File[] | undefined) ?? [];
-  const sources: UploadSource[] = files.map((file) => ({ buffer: file.buffer, originalName: file.originalname, mime: file.mimetype }));
-  if (req.body.url) sources.push(await fetchRemoteFile(req.body.url));
-  return sources;
-}
-
 export const uploadFilesHandler = catchAsync(async (req: Request, res: Response) => {
-  const { url: _url, ...options } = req.body;
-  const result = await uploadFiles(currentContext(req), await uploadSources(req), options);
-  sendResponse(res, status.CREATED, result.message, result.data);
+  const { url, ...options } = req.body;
+  const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+  const sources: UploadSource[] = files.map((file) => ({ path: file.path, size: file.size, originalName: file.originalname, mime: file.mimetype }));
+  const remote = url ? await fetchRemoteFile(url) : undefined;
+  try {
+    const result = await uploadFiles(currentContext(req), remote ? [...sources, remote] : sources, options);
+    sendResponse(res, status.CREATED, result.message, result.data);
+  } finally {
+    if (remote) await removeTempFiles([remote.path]);
+  }
 });
 
 export const listFilesHandler = catchAsync(async (req: Request, res: Response) => {

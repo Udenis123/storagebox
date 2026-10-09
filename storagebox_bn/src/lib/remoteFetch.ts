@@ -1,16 +1,23 @@
 import { lookup } from 'dns/promises';
+import { createWriteStream } from 'fs';
+import { Readable, Transform } from 'stream';
+import { pipeline } from 'stream/promises';
+import type { ReadableStream } from 'stream/web';
 import { isIP } from 'net';
 import status from 'http-status';
 import { config, isProduction } from '@/config/config';
 import ApiError from '@/utils/ApiError';
 import { ERROR_CODES } from '@/utils/errorCodes';
 import { extensionForMime, extensionOf } from './fileTypes';
+import { removeTempFiles, tempUploadPath } from './tempFiles';
 
-const FETCH_TIMEOUT_MS = 30_000;
+/** Covers the whole download, which can be several GB. */
+const FETCH_TIMEOUT_MS = 30 * 60 * 1000;
 const MAX_REDIRECTS = 5;
 
 export interface RemoteFile {
-  buffer: Buffer;
+  path: string;
+  size: number;
   originalName: string;
   mime?: string;
 }
@@ -28,22 +35,26 @@ async function assertPublicHost(url: URL): Promise<void> {
   if (addresses.some(isPrivateAddress)) throw fetchFailed('Remote URL must point to a public host');
 }
 
-async function readLimited(response: Response): Promise<Buffer> {
+const tooLarge = () => new ApiError(status.BAD_REQUEST, 'Remote file is larger than the upload limit', ERROR_CODES.FILE_TOO_LARGE);
+
+/** Streams the body to a temp file, stopping as soon as it passes the upload limit. */
+async function downloadLimited(response: Response): Promise<{ path: string; size: number }> {
   if (!response.body) throw fetchFailed('Remote URL returned an empty body');
-  const chunks: Buffer[] = [];
-  let total = 0;
-  const reader = response.body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > config.limits.maxUploadBytes) {
-      await reader.cancel();
-      throw new ApiError(status.BAD_REQUEST, 'Remote file is larger than the upload limit', ERROR_CODES.FILE_TOO_LARGE);
-    }
-    chunks.push(Buffer.from(value));
+  const filePath = tempUploadPath();
+  let size = 0;
+  const limiter = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      size += chunk.length;
+      callback(size > config.limits.maxUploadBytes ? tooLarge() : null, chunk);
+    },
+  });
+  try {
+    await pipeline(Readable.fromWeb(response.body as ReadableStream<Uint8Array>), limiter, createWriteStream(filePath));
+  } catch (error) {
+    await removeTempFiles([filePath]);
+    throw error instanceof ApiError ? error : fetchFailed('Could not download the remote file');
   }
-  return Buffer.concat(chunks);
+  return { path: filePath, size };
 }
 
 function fileNameFor(url: URL, mime: string | undefined): string {
@@ -83,6 +94,6 @@ export async function fetchRemoteFile(rawUrl: string): Promise<RemoteFile> {
   if (!response.ok) throw fetchFailed(`Remote URL responded with status ${response.status}`);
 
   const mime = response.headers.get('content-type') ?? undefined;
-  const buffer = await readLimited(response);
-  return { buffer, originalName: fileNameFor(finalUrl, mime), mime };
+  const { path, size } = await downloadLimited(response);
+  return { path, size, originalName: fileNameFor(finalUrl, mime), mime };
 }

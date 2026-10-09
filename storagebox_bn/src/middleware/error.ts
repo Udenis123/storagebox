@@ -7,11 +7,12 @@ import { MAX_FILES_PER_REQUEST } from '@/middleware/upload';
 import ApiError from '@/utils/ApiError';
 import { ERROR_CODES } from '@/utils/errorCodes';
 import { sendResponse } from '@/utils/response';
+import { formatBytes } from '@/utils/units';
 
-const maxUploadMb = Math.round(config.limits.maxUploadBytes / 1024 / 1024);
+const maxUploadLabel = formatBytes(config.limits.maxUploadBytes);
 
 const MULTER_MESSAGES: Partial<Record<MulterError['code'], string>> = {
-  LIMIT_FILE_SIZE: `Each file must be ${maxUploadMb} MB or smaller`,
+  LIMIT_FILE_SIZE: `Each file must be ${maxUploadLabel} or smaller`,
   LIMIT_FILE_COUNT: `At most ${MAX_FILES_PER_REQUEST} files can be uploaded at once`,
   LIMIT_UNEXPECTED_FILE: 'Send files in the "file" (or "files") form field',
 };

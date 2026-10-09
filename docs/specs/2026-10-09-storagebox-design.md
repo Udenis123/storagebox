@@ -63,7 +63,7 @@ Both `/api` and `/v1` share the same services; only the auth middleware differs
 
 ## Limits & validation
 
-- Max upload 100 MB per file (env), 20 files per request.
+- Max upload 5 GB per file (`MAX_UPLOAD_MB`), 20 files per request. Uploads spool to a temp file and stream to storage in parts.
 - Allowed extensions: pdf doc docx xls xlsx ppt pptx txt csv md rtf odt zip jpg jpeg png gif webp avif svg mp4 mov webm mp3.
 - Quota enforced before writing to storage.
 - Joi on every body/query.

@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/layout/Logo";
+import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { FileWall } from "./FileWall";
 
 type AuthLayoutProps = { title: string; subtitle: ReactNode; children: ReactNode };
 
 const PROOF_POINTS = [
-  { value: "100 MB", label: "per file" },
+  { value: MAX_UPLOAD_LABEL, label: "per file" },
   { value: "7 days", label: "signed links" },
   { value: "WebP · AVIF", label: "on the fly" },
 ];
