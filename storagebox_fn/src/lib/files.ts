@@ -14,17 +14,18 @@ export const KIND_OPTIONS = (Object.keys(KIND_META) as FileKind[])
   .filter((kind) => kind !== "other")
   .map((kind) => ({ value: kind, label: KIND_META[kind].label }));
 
-export type PreviewKind = "image" | "pdf" | "docx" | "sheet" | "office" | "video" | "audio" | "text" | "none";
+export type PreviewKind = "image" | "pdf" | "docx" | "pptx" | "sheet" | "office" | "video" | "audio" | "text" | "none";
 
 const TEXT_EXTENSIONS = new Set(["txt", "md", "json"]);
 const SHEET_EXTENSIONS = new Set(["xlsx", "xls", "csv"]);
 /** Shown through Office Online, which needs the API to be reachable from the internet. */
-const OFFICE_EXTENSIONS = new Set(["doc", "ppt", "pptx", "odt", "rtf"]);
+const OFFICE_EXTENSIONS = new Set(["doc", "ppt", "odt", "rtf"]);
 
 export function previewKindOf(file: Pick<StoredFile, "kind" | "ext">): PreviewKind {
   if (file.kind === "image") return "image";
   if (file.ext === "pdf") return "pdf";
   if (file.ext === "docx") return "docx";
+  if (file.ext === "pptx") return "pptx";
   if (SHEET_EXTENSIONS.has(file.ext)) return "sheet";
   if (OFFICE_EXTENSIONS.has(file.ext)) return "office";
   if (file.kind === "video") return "video";
@@ -32,6 +33,9 @@ export function previewKindOf(file: Pick<StoredFile, "kind" | "ext">): PreviewKi
   if (TEXT_EXTENSIONS.has(file.ext)) return "text";
   return "none";
 }
+
+/** Kinds shown as scrollable pages in the viewer. */
+export const isPagedKind = (kind: PreviewKind): kind is "pdf" | "docx" | "pptx" => kind === "pdf" || kind === "docx" || kind === "pptx";
 
 export const THUMBNAIL_TRANSFORM = "w_480,h_360,c_fill,q_75,f_webp";
 

@@ -60,7 +60,7 @@ export function FileGrid({ files, selected, onToggle, onOpen }: FileCollectionPr
             )}
           >
             <button type="button" onClick={() => onOpen(file)} className="grid text-left">
-              <FileThumb file={file} className="aspect-[4/3] w-full rounded-none" />
+              <FileThumb file={file} className="aspect-[4/3] w-full rounded-none" isDetailed />
               <span className="grid gap-0.5 p-3">
                 <span className="truncate text-sm font-semibold md:text-base">{file.originalName}</span>
                 <span className="text-xs text-muted-foreground md:text-sm">

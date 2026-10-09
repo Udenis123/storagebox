@@ -100,7 +100,7 @@ var cfg=${config};var view=document.getElementById('view');
 function message(text){view.innerHTML='';var box=document.createElement('div');box.className='status';box.textContent=text;view.appendChild(box)}
 function fetchRaw(type){return fetch(cfg.rawPath).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r[type]()})}
 function fail(){message('This document could not be shown here. Use Download to open it on your device.')}
-if(cfg.kind==='docx'){fetchRaw('blob').then(function(blob){view.innerHTML='';return docx.renderAsync(blob,view,null,{inWrapper:true,ignoreLastRenderedPageBreak:true,experimental:true})}).catch(fail)}
+if(cfg.kind==='docx'){fetchRaw('blob').then(function(blob){view.innerHTML='';return docx.renderAsync(blob,view,null,{inWrapper:true,ignoreLastRenderedPageBreak:false,experimental:true})}).catch(fail)}
 else if(cfg.kind==='sheet'){fetchRaw('arrayBuffer').then(function(buf){
   var book=XLSX.read(new Uint8Array(buf),{type:'array'});view.innerHTML='';
   var tabs=document.createElement('div');tabs.className='tabs';var sheet=document.createElement('div');sheet.className='sheet';

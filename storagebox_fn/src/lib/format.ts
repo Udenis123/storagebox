@@ -35,3 +35,12 @@ export const initialsOf = (name: string): string =>
 
 export const pluralize = (count: number, singular: string, plural = `${singular}s`): string =>
   `${count} ${count === 1 ? singular : plural}`;
+
+/** Media length as `m:ss`, or `h:mm:ss` from one hour. */
+export function formatDuration(totalSeconds: number): string {
+  const seconds = Math.floor(totalSeconds % 60);
+  const minutes = Math.floor((totalSeconds / 60) % 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return hours ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
+}

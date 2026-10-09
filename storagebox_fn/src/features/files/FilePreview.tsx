@@ -107,11 +107,22 @@ export function FilePreview({ file, isFill = false }: { file: StoredFile; isFill
     case "office":
       return <iframe src={embeddedViewerUrl(url)} title={file.originalName} className={`${frame} bg-white`} />;
     case "video":
-      return <video src={url} controls className={isFill ? "h-full w-full rounded-lg bg-black" : "max-h-[65vh] w-full rounded-lg bg-black"} />;
+      return (
+        <video
+          key={url}
+          src={url}
+          controls
+          playsInline
+          preload="metadata"
+          className={isFill ? "max-h-full max-w-full rounded-lg bg-black shadow-2xl shadow-black/50" : "max-h-[65vh] w-full rounded-lg bg-black"}
+        />
+      );
     case "audio":
       return (
-        <div className="flex h-48 items-center justify-center rounded-lg border bg-muted/30 p-6">
-          <audio src={url} controls className="w-full max-w-md" />
+        <div className="grid w-full max-w-lg justify-items-center gap-5 rounded-2xl border bg-background p-8 text-center shadow-lg">
+          <FileKindIcon file={file} className="size-24" />
+          <p className="max-w-full truncate text-base font-semibold">{file.originalName}</p>
+          <audio src={url} controls className="w-full" />
         </div>
       );
     case "text":

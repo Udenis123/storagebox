@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCopy } from "@/hooks/useCopy";
-import { downloadUrl, isTransformable } from "@/lib/files";
+import { downloadUrl, isPagedKind, isTransformable, previewKindOf, type PreviewKind } from "@/lib/files";
 import { formatBytes } from "@/lib/format";
 import type { StoredFile } from "@/lib/types";
+import { DocumentStage } from "../documents/DocumentStage";
 import { FilePreview } from "../FilePreview";
 import { FileKindIcon } from "../FileThumb";
 import { useDeleteFiles, useViewUrl } from "../hooks";
@@ -15,6 +16,12 @@ import { AssetLinks } from "./AssetLinks";
 import { AssetSummary } from "./AssetSummary";
 import { CHECKERBOARD, ImageStage } from "./ImageStage";
 import { TransformStudio } from "./TransformStudio";
+
+const STAGE_CLASS: Partial<Record<PreviewKind, string>> = {
+  image: `flex flex-1 items-center justify-center p-6 ${CHECKERBOARD}`,
+  video: "flex min-h-0 flex-1 items-center justify-center bg-slate-950 p-4 sm:p-6",
+  audio: "flex min-h-0 flex-1 items-center justify-center bg-gradient-to-br from-indigo-50 via-background to-emerald-50 p-6",
+};
 
 type AssetViewerProps = {
   file: StoredFile | null;
@@ -54,6 +61,7 @@ function ViewerBody({ file, siblings, onNavigate, onClose }: AssetViewerProps & 
   const previous = index > 0 ? siblings[index - 1] : undefined;
   const next = index >= 0 && index < siblings.length - 1 ? siblings[index + 1] : undefined;
   const canTransform = isTransformable(file);
+  const previewKind = previewKindOf(file);
 
   const deleteFiles = useDeleteFiles(() => {
     setIsDeleting(false);
@@ -109,8 +117,10 @@ function ViewerBody({ file, siblings, onNavigate, onClose }: AssetViewerProps & 
         <main className="relative flex h-[50dvh] shrink-0 flex-col bg-muted/40 lg:h-auto lg:min-w-0 lg:flex-1">
           {canTransform ? (
             <ImageStage key={file.id} file={file} transform={transform} />
+          ) : isPagedKind(previewKind) ? (
+            <DocumentStage key={file.id} file={file} kind={previewKind} />
           ) : (
-            <div className={file.kind === "image" ? `flex flex-1 items-center justify-center p-6 ${CHECKERBOARD}` : "grid min-h-0 flex-1 p-4 sm:p-6"}>
+            <div className={STAGE_CLASS[previewKind] ?? "grid min-h-0 flex-1 p-4 sm:p-6"}>
               <FilePreview file={file} isFill />
             </div>
           )}
