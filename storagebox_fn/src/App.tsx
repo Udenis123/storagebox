@@ -11,6 +11,7 @@ import HomePage from "@/pages/HomePage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 
+const DocumentationPage = lazy(() => import("@/pages/DocumentationPage"));
 const OverviewPage = lazy(() => import("@/pages/OverviewPage"));
 const LibraryPage = lazy(() => import("@/pages/LibraryPage"));
 const ApiKeysPage = lazy(() => import("@/pages/ApiKeysPage"));
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/documentation" element={<DocumentationPage />} />
               <Route element={<RequireAuth />}>
                 <Route element={<AppLayout />}>
                   <Route path="/overview" element={<OverviewPage />} />

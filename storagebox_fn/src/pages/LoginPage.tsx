@@ -77,7 +77,7 @@ export default function LoginPage() {
         <FormField label="Password" htmlFor="password" error={errors.password?.message}>
           <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" className={INPUT_CLASS} {...form.register("password")} />
         </FormField>
-        <Button type="submit" className="h-12 text-base shadow-lg shadow-indigo-600/20" disabled={isSubmitting}>
+        <Button type="submit" className="h-12 text-base" disabled={isSubmitting}>
           {isSubmitting && <Loader2 className="animate-spin" />}
           Sign in
         </Button>

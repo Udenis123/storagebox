@@ -72,7 +72,7 @@ const file = await storagebox.files.upload(myFile, { collection: "invoices/2026"
 const { url } = await storagebox.files.signedUrl(file.publicId, { expiresIn: 3600 });
 ```
 
-There are more examples in the dashboard (**API Docs**), in `sdk/README.md` and in Swagger at http://localhost:4200/docs.
+There are more examples in the public developer guide at http://localhost:3200/documentation (also inside the dashboard as **API Docs**), in `sdk/README.md` and in Swagger at http://localhost:4200/docs.
 
 ## Tests
 

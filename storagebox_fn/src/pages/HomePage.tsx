@@ -1,251 +1,277 @@
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  BookOpen,
-  Eye,
-  FolderTree,
-  Gauge,
-  ImageIcon,
-  KeyRound,
-  Link2,
-  ShieldCheck,
-  Sparkles,
-  UserCheck,
-  Webhook,
-  type LucideIcon,
-} from "lucide-react";
-import { Logo } from "@/components/layout/Logo";
+import { ArrowRight, Check, Plus } from "lucide-react";
 import { CodeBlock } from "@/components/shared/CopyField";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
-import { MarketingBackdrop } from "@/features/auth/AuthLayout";
-import { ProductPreview } from "@/features/marketing/ProductPreview";
-import { API_DOCS_URL, SDK_PACKAGE } from "@/lib/constants";
-import { homePathFor } from "@/lib/session";
+import { buildSnippets, SNIPPET_LANGUAGES, type SnippetLanguage } from "@/features/developer/snippets";
+import { LibraryMock, SignedLinkMock, TransformMock, UploadMock } from "@/features/marketing/mocks";
+import { SiteFooter, SiteHeader } from "@/features/marketing/SiteChrome";
+import { useHashScroll } from "@/hooks/useHashScroll";
+import { API_BASE_URL, MAX_FILES_PER_UPLOAD, MAX_UPLOAD_MB, SDK_PACKAGE } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
-type Feature = { icon: LucideIcon; title: string; text: string };
+const DISPLAY = "font-semibold tracking-[-0.035em] text-balance";
 
-const FEATURES: Feature[] = [
-  { icon: FolderTree, title: "Collections", text: "Organise PDFs, Word files, images and video in nested folders like invoices/2026." },
-  { icon: Link2, title: "Public & signed links", text: "A permanent link for public files, expiring signed links for private ones." },
-  { icon: ImageIcon, title: "On-the-fly images", text: "Resize, crop and convert to WebP or AVIF just by changing the URL." },
-  { icon: Eye, title: "Instant previews", text: "Open PDFs, Word documents, images, audio and video right in the browser." },
-  { icon: KeyRound, title: "API keys & SDK", text: "Cloud name, API key and secret — upload from any backend in one call." },
-  { icon: Webhook, title: "Webhooks & usage", text: "Get notified on every upload and follow storage and bandwidth per day." },
+const FACTS = [
+  { value: `${MAX_UPLOAD_MB} MB`, label: "per file" },
+  { value: String(MAX_FILES_PER_UPLOAD), label: "files per upload" },
+  { value: "7 days", label: "longest signed link" },
+  { value: "WebP · AVIF", label: "images on the fly" },
 ];
 
-const STEPS: Feature[] = [
-  { icon: UserCheck, title: "Request an account", text: "Sign up in a minute. An administrator reviews every new account." },
-  { icon: Gauge, title: "Get approved", text: "Your storage space is set for you and your cloud name is ready." },
-  { icon: KeyRound, title: "Create credentials", text: "Generate an API key and secret, then drop them in your .env file." },
-  { icon: Sparkles, title: "Upload & share", text: "Upload from the dashboard or your code and share links instantly." },
+type Story = { id: string; eyebrow: string; title: string; text: string; points: string[]; visual: ReactNode };
+
+const STORIES: Story[] = [
+  {
+    id: "library",
+    eyebrow: "Media library",
+    title: "Drop files in. Find them again in seconds.",
+    text: "Invoices, contracts, photos and videos live in collections you name yourself — the same way you already sort folders.",
+    points: ["Nested collections like invoices/2026", "PDF, Word, video and images open right in the browser", "Search by name, tag or public ID"],
+    visual: <UploadMock />,
+  },
+  {
+    id: "images",
+    eyebrow: "Images",
+    title: "Change the link, get a new image.",
+    text: "Add a few letters to any image link to resize, crop or convert it. Each version is made once, then served from cache.",
+    points: ["Width, height, crop, quality and format", "WebP and AVIF for lighter pages", "Works on private files through signed links"],
+    visual: <TransformMock />,
+  },
+  {
+    id: "access",
+    eyebrow: "Access",
+    title: "Public when you want it. Private when you don't.",
+    text: "Public files get a permanent link. Private files can only be opened through a signed link that stops working when you say so.",
+    points: ["Signed links from 5 minutes to 7 days", "Switch a file between public and private anytime", "Every view and download counted in your usage"],
+    visual: <SignedLinkMock />,
+  },
 ];
 
-const SDK_SNIPPET = `npm install ${SDK_PACKAGE}
+const STEPS = [
+  { title: "Request an account", text: "Tell us who you are. A person on our team approves it and sets your storage." },
+  { title: "Create an API key", text: "Copy your cloud name, key and secret into your .env — the same idea as Cloudinary." },
+  { title: "Upload from your code", text: `npm install ${SDK_PACKAGE}, call upload(), and save the link you get back.` },
+];
 
-# .env
-STORAGEBOX_CLOUD_NAME=acme
-STORAGEBOX_API_KEY=482917365028174
-STORAGEBOX_API_SECRET=••••••••••••••••••••••••••`;
+const FAQ = [
+  {
+    question: "What can I store?",
+    answer: `Documents (PDF, Word, Excel, PowerPoint, text, CSV), images, audio, video and zip archives — up to ${MAX_UPLOAD_MB} MB per file.`,
+  },
+  {
+    question: "Why does an administrator approve accounts?",
+    answer: "Storage is a shared resource, so we look at every request. It keeps the service fast and stops spam accounts. You can sign in as soon as yours is approved.",
+  },
+  {
+    question: "What happens when my storage is full?",
+    answer: "You see a warning at 80%. Ask for more space from the dashboard in one click — the administrator raises your limit, and your files stay where they are.",
+  },
+  {
+    question: "Do I have to use the SDK?",
+    answer: "No. The SDK is a thin wrapper around a REST API. Anything that can send an HTTP request — cURL, Python, PHP, Go — can upload and fetch files.",
+  },
+  {
+    question: "How is it different from Cloudinary?",
+    answer: "The ideas are the same — cloud name, API key and secret, transformations in the URL — but StorageBox treats documents as first-class files and is run locally by Binary Hub.",
+  },
+];
 
-const CODE_SNIPPET = `import { StorageBox } from "${SDK_PACKAGE}";
+function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
+  return <p className={cn("text-sm font-medium text-primary", className)}>{children}</p>;
+}
 
-// Reads STORAGEBOX_* from the environment
-const storagebox = new StorageBox();
-
-const file = await storagebox.files.upload(pdf, {
-  collection: "invoices/2026",
-});
-console.log(file.url);
-// → https://storagebox.urbinaryhub.com/f/acme/invoice.pdf
-
-// Private files: a link that expires in 1 hour
-const { url } = await storagebox.files.signedUrl(file.publicId, {
-  expiresIn: 3600,
-});`;
-
-const DARK_CODE_CLASS = "[&_pre]:bg-slate-900 [&_pre]:ring-1 [&_pre]:ring-white/10";
-
-function SectionHeading({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
+function Hero() {
   return (
-    <div className="mx-auto grid max-w-2xl gap-3 text-center">
-      <p className="text-sm font-semibold tracking-wider text-indigo-600 uppercase">{eyebrow}</p>
-      <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">{title}</h2>
-      <p className="text-lg text-slate-600">{text}</p>
-    </div>
+    <section className="relative">
+      <div className="mx-auto grid max-w-4xl justify-items-center gap-7 px-5 pt-20 pb-14 text-center sm:px-8 lg:pt-28">
+        <Link
+          to="/documentation#quick-start"
+          className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <span className="font-mono text-xs text-foreground">npm install {SDK_PACKAGE}</span>
+          <span className="h-3.5 w-px bg-border" />
+          Quick start <ArrowRight className="size-3.5" />
+        </Link>
+        <h1 className={cn(DISPLAY, "text-5xl leading-[1.02] sm:text-7xl")}>
+          Every file,
+          <br />
+          one link away.
+        </h1>
+        <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+          StorageBox keeps documents, images and video for your team and your apps — sorted into collections, previewed in the
+          browser and shared through public or expiring links.
+        </p>
+        <div className="flex flex-col items-center gap-4 sm:flex-row">
+          <Button className="h-12 rounded-full px-7 text-base" render={<Link to="/register" />}>
+            Request an account <ArrowRight />
+          </Button>
+          <Button variant="ghost" className="h-12 rounded-full px-5 text-base" render={<Link to="/documentation" />}>
+            Read the documentation
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">Accounts reviewed by a person · Built by Binary Hub in Kigali</p>
+      </div>
+
+      <dl className="mx-auto grid max-w-4xl grid-cols-2 border-y px-5 sm:px-8 md:grid-cols-4">
+        {FACTS.map((fact, index) => (
+          <div key={fact.label} className={cn("grid gap-1 py-6 text-center", index % 2 === 1 && "border-l", index >= 2 && "border-t md:border-t-0", index === 2 && "md:border-l")}>
+            <dt className="order-2 text-sm text-muted-foreground">{fact.label}</dt>
+            <dd className="text-2xl font-semibold tracking-tight">{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div id="product" className="mx-auto max-w-5xl scroll-mt-24 px-5 pt-16 pb-24 sm:px-8">
+        <LibraryMock />
+      </div>
+    </section>
   );
 }
 
-function SiteHeader() {
-  const { isAuthenticated, user } = useAuth();
+function StoryRow({ story, isReversed }: { story: Story; isReversed: boolean }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/70 backdrop-blur-lg">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
-        <Link to="/" aria-label="StorageBox home">
-          <Logo />
-        </Link>
-        <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex">
-          <a href="#features" className="hover:text-slate-900">Features</a>
-          <a href="#how-it-works" className="hover:text-slate-900">How it works</a>
-          <a href="#developers" className="hover:text-slate-900">Developers</a>
-        </nav>
-        {isAuthenticated ? (
-          <Button size="lg" render={<Link to={homePathFor(user)} />}>
-            Open dashboard <ArrowRight />
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="lg" className="hidden sm:inline-flex" render={<Link to="/login" />}>
-              Sign in
+    <article id={story.id} className="grid scroll-mt-24 items-center gap-10 lg:grid-cols-2 lg:gap-20">
+      <div className={cn("grid gap-5", isReversed && "lg:order-2")}>
+        <Eyebrow>{story.eyebrow}</Eyebrow>
+        <h2 className={cn(DISPLAY, "text-3xl leading-tight sm:text-4xl")}>{story.title}</h2>
+        <p className="text-lg leading-relaxed text-muted-foreground">{story.text}</p>
+        <ul className="grid gap-3 pt-1">
+          {story.points.map((point) => (
+            <li key={point} className="flex gap-3 text-base">
+              <Check className="mt-1 size-4 shrink-0 text-primary" />
+              {point}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="min-w-0">{story.visual}</div>
+    </article>
+  );
+}
+
+function Developers() {
+  const [language, setLanguage] = useState<SnippetLanguage>("sdk");
+  const snippets = useMemo(() => buildSnippets(API_BASE_URL), []);
+
+  return (
+    <section id="developers" className="scroll-mt-16 bg-slate-950 py-24 text-white">
+      <div className="mx-auto grid max-w-6xl gap-14 px-5 sm:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
+        <div className="grid content-start gap-5">
+          <Eyebrow className="text-indigo-300">Developers</Eyebrow>
+          <h2 className={cn(DISPLAY, "text-3xl leading-tight sm:text-4xl")}>Live in minutes. Three steps to your first upload.</h2>
+          <p className="text-lg leading-relaxed text-slate-400">
+            One package for Node and the browser, plain REST for everything else. Webhooks tell your backend when files arrive.
+          </p>
+          <ol className="mt-4 grid gap-7">
+            {STEPS.map((step, index) => (
+              <li key={step.title} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-4">
+                <span className="grid size-8 place-items-center rounded-full border border-white/15 font-mono text-sm text-slate-300">{index + 1}</span>
+                <div className="grid gap-1">
+                  <p className="font-medium">{step.title}</p>
+                  <p className="text-slate-400">{step.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button className="h-11 rounded-full px-6 text-base" render={<Link to="/register" />}>
+              Get your API keys
             </Button>
-            <Button size="lg" render={<Link to="/register" />}>
-              Get started
+            <Button
+              variant="ghost"
+              className="h-11 rounded-full px-5 text-base text-white hover:bg-white/10 hover:text-white"
+              render={<Link to="/documentation" />}
+            >
+              Documentation <ArrowRight />
             </Button>
           </div>
-        )}
+        </div>
+
+        <div className="min-w-0 self-start overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10 lg:sticky lg:top-24">
+          <div className="flex gap-1 overflow-x-auto border-b border-white/10 px-2 pt-2">
+            {SNIPPET_LANGUAGES.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setLanguage(option.value)}
+                className={cn(
+                  "shrink-0 rounded-t-md px-3.5 py-2 text-sm transition-colors",
+                  language === option.value ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <CodeBlock code={snippets.upload[language]} className="[&_pre]:rounded-none [&_pre]:bg-slate-800/60 [&_pre]:p-5" />
+        </div>
       </div>
-    </header>
+    </section>
+  );
+}
+
+function Faq() {
+  return (
+    <section id="faq" className="mx-auto grid max-w-6xl scroll-mt-24 gap-10 px-5 py-24 sm:px-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-20">
+      <div className="grid content-start gap-4">
+        <Eyebrow>Questions</Eyebrow>
+        <h2 className={cn(DISPLAY, "text-3xl leading-tight sm:text-4xl")}>Things people ask before signing up.</h2>
+        <p className="text-lg text-muted-foreground">
+          Something else? Read the{" "}
+          <Link to="/documentation" className="text-foreground underline underline-offset-4 hover:text-primary">
+            documentation
+          </Link>
+          .
+        </p>
+      </div>
+      <div className="divide-y border-y">
+        {FAQ.map((item) => (
+          <details key={item.question} className="group py-5">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-medium [&::-webkit-details-marker]:hidden">
+              {item.question}
+              <Plus className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-45" />
+            </summary>
+            <p className="pt-3 pr-8 text-base leading-relaxed text-muted-foreground">{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
   );
 }
 
 export default function HomePage() {
+  useHashScroll();
   return (
-    <div className="relative isolate min-h-dvh bg-slate-50 text-slate-900">
+    <div className="min-h-dvh bg-background text-foreground">
       <SiteHeader />
-
-      <section className="relative isolate overflow-hidden">
-        <MarketingBackdrop />
-        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 px-5 pt-16 pb-24 sm:px-8 lg:grid-cols-2 lg:pt-24">
-          <div className="grid gap-7">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-indigo-700 shadow-sm ring-1 ring-indigo-100">
-              <ShieldCheck className="size-4" /> Secure file storage by Binary Hub
-            </span>
-            <h1 className="text-5xl leading-[1.05] font-extrabold tracking-tight sm:text-6xl">
-              Store files.
-              <br />
-              <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 bg-clip-text text-transparent">Share them anywhere.</span>
-            </h1>
-            <p className="max-w-xl text-lg text-slate-600 sm:text-xl">
-              StorageBox keeps your documents, images and videos in one place and gives every file a fast link — public or
-              private and expiring. Built for teams and for developers.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button size="lg" className="h-12 px-6 text-base shadow-lg shadow-indigo-600/25" render={<Link to="/register" />}>
+      <main>
+        <Hero />
+        <section className="border-t bg-card py-24">
+          <div className="mx-auto grid max-w-6xl gap-28 px-5 sm:px-8">
+            {STORIES.map((story, index) => (
+              <StoryRow key={story.id} story={story} isReversed={index % 2 === 1} />
+            ))}
+          </div>
+        </section>
+        <Developers />
+        <Faq />
+        <section className="border-t bg-card">
+          <div className="mx-auto grid max-w-3xl justify-items-center gap-6 px-5 py-24 text-center sm:px-8">
+            <h2 className={cn(DISPLAY, "text-4xl leading-tight sm:text-5xl")}>Store your first file today.</h2>
+            <p className="max-w-xl text-lg text-muted-foreground">Send a request now — once you're approved you can upload, share and connect your app in a few minutes.</p>
+            <div className="flex flex-col items-center gap-3 sm:flex-row">
+              <Button className="h-12 rounded-full px-7 text-base" render={<Link to="/register" />}>
                 Request an account <ArrowRight />
               </Button>
-              <Button variant="outline" size="lg" className="h-12 bg-white px-6 text-base" render={<a href="#developers" />}>
-                <BookOpen /> For developers
-              </Button>
-            </div>
-            <dl className="grid max-w-lg grid-cols-3 gap-6 pt-2">
-              {[
-                ["100 MB", "per file"],
-                ["7 days", "max signed link"],
-                ["WebP · AVIF", "image formats"],
-              ].map(([value, label]) => (
-                <div key={label}>
-                  <dt className="text-xl font-bold text-slate-900">{value}</dt>
-                  <dd className="text-sm text-slate-500">{label}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-          <ProductPreview className="lg:ml-8" />
-        </div>
-      </section>
-
-      <section id="features" className="scroll-mt-20 bg-white py-24">
-        <div className="mx-auto grid max-w-6xl gap-14 px-5 sm:px-8">
-          <SectionHeading
-            eyebrow="Features"
-            title="Everything files need"
-            text="Upload once, then organise, preview, transform and share — from the dashboard or from your code."
-          />
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, text }) => (
-              <article key={title} className="group grid gap-3 rounded-2xl border border-slate-200 p-6 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5">
-                <span className="grid size-12 place-items-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
-                  <Icon className="size-6" />
-                </span>
-                <h3 className="text-lg font-bold">{title}</h3>
-                <p className="text-base text-slate-600">{text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="scroll-mt-20 py-24">
-        <div className="mx-auto grid max-w-6xl gap-14 px-5 sm:px-8">
-          <SectionHeading eyebrow="How it works" title="From sign-up to first link" text="Every account is reviewed, so your storage stays private and under control." />
-          <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map(({ icon: Icon, title, text }, index) => (
-              <li key={title} className="relative grid gap-3 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <span className="absolute top-5 right-5 text-5xl font-black text-slate-100">{index + 1}</span>
-                <span className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/20">
-                  <Icon className="size-5" />
-                </span>
-                <h3 className="text-lg font-bold">{title}</h3>
-                <p className="text-base text-slate-600">{text}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <section id="developers" className="scroll-mt-20 bg-slate-950 py-24 text-white">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-5 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <div className="grid gap-6">
-            <p className="text-sm font-semibold tracking-wider text-indigo-300 uppercase">Developers</p>
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Three credentials. One line to upload.</h2>
-            <p className="text-lg text-slate-300">
-              Like Cloudinary: your cloud name, API key and API secret go in your environment, and the{" "}
-              <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-base">{SDK_PACKAGE}</code> package does the rest. Prefer
-              plain HTTP? Every feature is a REST call.
-            </p>
-            <CodeBlock code={SDK_SNIPPET} className={DARK_CODE_CLASS} />
-            <div className="flex flex-wrap gap-3">
-              <Button size="lg" className="h-12 px-6 text-base" render={<Link to="/register" />}>
-                Get your API keys <ArrowRight />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-12 border-white/20 bg-transparent px-6 text-base text-white hover:bg-white/10 hover:text-white"
-                render={<a href={API_DOCS_URL} target="_blank" rel="noreferrer" />}
-              >
-                API reference
+              <Button variant="ghost" className="h-12 rounded-full px-5 text-base" render={<Link to="/login" />}>
+                I already have one
               </Button>
             </div>
           </div>
-          <CodeBlock code={CODE_SNIPPET} className={DARK_CODE_CLASS} />
-        </div>
-      </section>
-
-      <section className="py-24">
-        <div className="mx-auto max-w-5xl px-5 sm:px-8">
-          <div className="relative isolate grid gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-indigo-800 px-8 py-14 text-center text-white shadow-2xl shadow-indigo-900/20 sm:px-16">
-            <div aria-hidden className="absolute -top-24 -right-24 -z-10 size-72 rounded-full bg-white/10 blur-2xl" />
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Ready to store your first file?</h2>
-            <p className="mx-auto max-w-xl text-lg text-indigo-100">Request an account today. Once approved, you can upload and share in minutes.</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button size="lg" className="h-12 bg-white px-6 text-base text-indigo-700 hover:bg-indigo-50" render={<Link to="/register" />}>
-                Request an account
-              </Button>
-              <Button variant="ghost" size="lg" className="h-12 px-6 text-base text-white hover:bg-white/10 hover:text-white" render={<Link to="/login" />}>
-                Sign in
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:px-8">
-          <Logo />
-          <p>© {new Date().getFullYear()} Binary Hub · storagebox.urbinaryhub.com</p>
-        </div>
-      </footer>
+        </section>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -86,7 +86,7 @@ export default function RegisterPage() {
   return (
     <AuthLayout title="Request an account" subtitle="Tell us who you are. An administrator approves new accounts and sets your storage.">
       <form className="grid gap-5" onSubmit={onSubmit} noValidate>
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5">
           <FormField label="Your name" htmlFor="name" error={errors.name?.message}>
             <Input id="name" autoComplete="name" placeholder="Jane Doe" className={INPUT_CLASS} {...form.register("name")} />
           </FormField>
@@ -100,7 +100,7 @@ export default function RegisterPage() {
         <FormField label="Password" htmlFor="password" hint="At least 8 characters." error={errors.password?.message}>
           <Input id="password" type="password" autoComplete="new-password" className={INPUT_CLASS} {...form.register("password")} />
         </FormField>
-        <Button type="submit" className="h-12 text-base shadow-lg shadow-indigo-600/20" disabled={isSubmitting}>
+        <Button type="submit" className="h-12 text-base" disabled={isSubmitting}>
           {isSubmitting && <Loader2 className="animate-spin" />}
           Send request
         </Button>
