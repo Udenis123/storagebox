@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { Clock, Loader2, XCircle } from "lucide-react";
+import { ArrowRight, Clock, Loader2, Mail, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { FormField, INPUT_CLASS } from "@/components/shared/FormField";
+import { FormField } from "@/components/shared/FormField";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { ACCOUNT_PENDING_CODE, ACCOUNT_REJECTED_CODE } from "@/features/auth/api";
+import { IconInput, PasswordInput } from "@/features/auth/AuthInputs";
 import { AuthLayout } from "@/features/auth/AuthLayout";
 import { ApiRequestError } from "@/lib/api";
 import { homePathFor, safeReturnPath } from "@/lib/session";
@@ -68,26 +68,31 @@ export default function LoginPage() {
   });
 
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to manage your files, links and API keys.">
+    <AuthLayout title="Welcome back" subtitle="Sign in to your StorageBox account to manage files, links and API keys.">
       {blocked && <BlockedNotice reason={blocked} />}
       <form className="grid gap-5" onSubmit={onSubmit} noValidate>
         <FormField label="Email" htmlFor="email" error={errors.email?.message}>
-          <Input id="email" type="email" autoComplete="email" placeholder="you@company.com" className={INPUT_CLASS} {...form.register("email")} />
+          <IconInput icon={Mail} id="email" type="email" autoComplete="email" placeholder="you@company.com" {...form.register("email")} />
         </FormField>
         <FormField label="Password" htmlFor="password" error={errors.password?.message}>
-          <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" className={INPUT_CLASS} {...form.register("password")} />
+          <PasswordInput id="password" autoComplete="current-password" placeholder="Your password" {...form.register("password")} />
         </FormField>
-        <Button type="submit" className="h-12 text-base" disabled={isSubmitting}>
+        <Button type="submit" className="mt-2 h-12 rounded-lg text-base" disabled={isSubmitting}>
           {isSubmitting && <Loader2 className="animate-spin" />}
           Sign in
+          {!isSubmitting && <ArrowRight />}
         </Button>
       </form>
-      <p className="text-center text-base text-slate-600">
-        New to StorageBox?{" "}
-        <Link to="/register" className="font-semibold text-primary hover:underline">
+      <div className="grid gap-4">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
+          New to StorageBox?
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <Button variant="outline" className="h-12 rounded-lg text-base" render={<Link to="/register" />}>
           Request an account
-        </Link>
-      </p>
+        </Button>
+      </div>
     </AuthLayout>
   );
 }

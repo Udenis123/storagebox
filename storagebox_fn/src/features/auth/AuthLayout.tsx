@@ -1,52 +1,67 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
-import { LibraryMock } from "@/features/marketing/mocks";
+import { FileWall } from "./FileWall";
 
 type AuthLayoutProps = { title: string; subtitle: ReactNode; children: ReactNode };
 
-const HIGHLIGHTS = ["Collections for every project", "Public, private and expiring links", "API keys for your own apps"];
+const PROOF_POINTS = [
+  { value: "100 MB", label: "per file" },
+  { value: "7 days", label: "signed links" },
+  { value: "WebP · AVIF", label: "on the fly" },
+];
 
 export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
   return (
-    <div className="grid min-h-dvh bg-card lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <div className="flex flex-col px-5 py-6 sm:px-10">
-        <header className="flex items-center justify-between">
-          <Link to="/" aria-label="StorageBox home">
-            <Logo className="[&_img]:size-8 [&>span]:text-lg" />
-          </Link>
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="size-4" /> Home
-          </Link>
-        </header>
+    <div className="grid min-h-dvh bg-card lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      <div className="flex flex-col px-6 py-8 sm:px-12">
+        <Link to="/" aria-label="StorageBox home" className="w-fit">
+          <Logo className="[&_img]:size-8 [&>span]:text-lg" />
+        </Link>
 
-        <main className="mx-auto grid w-full max-w-sm flex-1 content-center gap-8 py-12">
-          <div className="grid gap-2">
-            <h1 className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{title}</h1>
-            <p className="text-base leading-relaxed text-muted-foreground">{subtitle}</p>
+        <main className="mx-auto grid w-full max-w-[25rem] flex-1 content-center gap-9 py-14">
+          <div className="grid gap-3">
+            <h1 className="text-[2.1rem] leading-tight font-semibold tracking-[-0.035em] sm:text-[2.5rem]">{title}</h1>
+            <p className="text-base leading-relaxed text-muted-foreground sm:text-[1.05rem]">{subtitle}</p>
           </div>
           {children}
         </main>
 
-        <footer className="text-sm text-muted-foreground">© {new Date().getFullYear()} Binary Hub</footer>
+        <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+          <span>© {new Date().getFullYear()} Binary Hub</span>
+          <nav className="flex gap-5">
+            <Link to="/" className="hover:text-foreground">
+              Home
+            </Link>
+            <Link to="/documentation" className="hover:text-foreground">
+              Docs
+            </Link>
+          </nav>
+        </footer>
       </div>
 
-      <aside className="relative hidden overflow-hidden border-l bg-muted/50 lg:flex lg:flex-col lg:justify-center lg:gap-10 lg:p-14 xl:p-20">
-        <div className="grid max-w-lg gap-4">
-          <p className="text-2xl leading-snug font-semibold tracking-[-0.02em] text-balance xl:text-3xl">
-            Your documents, images and videos — sorted, previewed and one link away.
-          </p>
-          <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-            {HIGHLIGHTS.map((highlight) => (
-              <li key={highlight} className="flex items-center gap-2">
-                <span className="size-1.5 rounded-full bg-primary" />
-                {highlight}
-              </li>
+      <aside className="relative isolate hidden overflow-hidden bg-slate-950 lg:block">
+        <FileWall />
+        <div className="relative flex h-full flex-col justify-end gap-8 p-12 text-white xl:p-16">
+          <blockquote className="grid max-w-md gap-4">
+            <p className="text-3xl leading-[1.15] font-semibold tracking-[-0.03em] text-balance xl:text-4xl">
+              Store it once.
+              <br />
+              <span className="text-slate-400">Share it anywhere.</span>
+            </p>
+            <p className="text-base leading-relaxed text-slate-400">
+              Documents, images and video for your team and your apps — with public, private and expiring links.
+            </p>
+          </blockquote>
+          <dl className="flex flex-wrap gap-x-10 gap-y-4 border-t border-white/10 pt-6">
+            {PROOF_POINTS.map((point) => (
+              <div key={point.label} className="grid gap-0.5">
+                <dt className="order-2 text-sm text-slate-500">{point.label}</dt>
+                <dd className="text-lg font-semibold">{point.value}</dd>
+              </div>
             ))}
-          </ul>
+          </dl>
         </div>
-        <LibraryMock className="w-[125%] max-w-none" />
       </aside>
     </div>
   );

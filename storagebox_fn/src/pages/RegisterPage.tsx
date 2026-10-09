@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, Navigate } from "react-router-dom";
-import { CheckCircle2, Clock, KeyRound, Loader2, MailCheck } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, Clock, KeyRound, Loader2, Mail, MailCheck, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { FormField, INPUT_CLASS } from "@/components/shared/FormField";
+import { FormField } from "@/components/shared/FormField";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { IconInput, PasswordInput } from "@/features/auth/AuthInputs";
 import { AuthLayout } from "@/features/auth/AuthLayout";
 import { homePathFor } from "@/lib/session";
 
@@ -48,7 +48,7 @@ function RequestReceived({ email }: { email: string }) {
           </li>
         ))}
       </ol>
-      <Button size="lg" className="h-12 text-base" render={<Link to="/login" />}>
+      <Button className="h-12 rounded-lg text-base" render={<Link to="/login" />}>
         Back to sign in
       </Button>
     </div>
@@ -88,29 +88,34 @@ export default function RegisterPage() {
       <form className="grid gap-5" onSubmit={onSubmit} noValidate>
         <div className="grid gap-5">
           <FormField label="Your name" htmlFor="name" error={errors.name?.message}>
-            <Input id="name" autoComplete="name" placeholder="Jane Doe" className={INPUT_CLASS} {...form.register("name")} />
+            <IconInput icon={UserRound} id="name" autoComplete="name" placeholder="Jane Doe" {...form.register("name")} />
           </FormField>
           <FormField label="Company or project" htmlFor="accountName" error={errors.accountName?.message}>
-            <Input id="accountName" placeholder="Optional" className={INPUT_CLASS} {...form.register("accountName")} />
+            <IconInput icon={Building2} id="accountName" placeholder="Optional" {...form.register("accountName")} />
           </FormField>
         </div>
         <FormField label="Work email" htmlFor="email" error={errors.email?.message}>
-          <Input id="email" type="email" autoComplete="email" placeholder="you@company.com" className={INPUT_CLASS} {...form.register("email")} />
+          <IconInput icon={Mail} id="email" type="email" autoComplete="email" placeholder="you@company.com" {...form.register("email")} />
         </FormField>
         <FormField label="Password" htmlFor="password" hint="At least 8 characters." error={errors.password?.message}>
-          <Input id="password" type="password" autoComplete="new-password" className={INPUT_CLASS} {...form.register("password")} />
+          <PasswordInput id="password" autoComplete="new-password" placeholder="Choose a password" {...form.register("password")} />
         </FormField>
-        <Button type="submit" className="h-12 text-base" disabled={isSubmitting}>
+        <Button type="submit" className="mt-2 h-12 rounded-lg text-base" disabled={isSubmitting}>
           {isSubmitting && <Loader2 className="animate-spin" />}
           Send request
+          {!isSubmitting && <ArrowRight />}
         </Button>
       </form>
-      <p className="text-center text-base text-slate-600">
-        Already approved?{" "}
-        <Link to="/login" className="font-semibold text-primary hover:underline">
+      <div className="grid gap-4">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
+          Already approved?
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <Button variant="outline" className="h-12 rounded-lg text-base" render={<Link to="/login" />}>
           Sign in
-        </Link>
-      </p>
+        </Button>
+      </div>
     </AuthLayout>
   );
 }

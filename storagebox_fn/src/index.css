@@ -57,6 +57,13 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --animate-file-wall: file-wall 60s linear infinite;
+
+  @keyframes file-wall {
+    to {
+      transform: translateY(-50%);
+    }
+  }
 }
 
 :root {
