@@ -1,0 +1,13 @@
+export const queryKeys = {
+  me: ["me"] as const,
+  usage: ["usage"] as const,
+  collections: ["collections"] as const,
+  files: ["files"] as const,
+  fileList: (params: object) => ["files", "list", params] as const,
+  signedLink: (fileId: string, transform: string, expiresIn: number) => ["files", "signed", fileId, transform, expiresIn] as const,
+  apiKeys: ["api-keys"] as const,
+  webhooks: ["webhooks"] as const,
+  activity: (page: number) => ["activity", page] as const,
+  adminStats: ["admin", "stats"] as const,
+  adminAccounts: ["admin", "accounts"] as const,
+};

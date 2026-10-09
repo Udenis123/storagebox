@@ -17,8 +17,8 @@ export function createApp(): Express {
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
-  // Delivered files are embedded from any origin (img/iframe/pdf), so resources must be cross-origin readable.
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: false }));
+  // Delivered files are embedded from any origin (img, iframe PDF viewers), so they must be cross-origin readable and frameable.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: false, frameguard: false }));
   app.use(compression());
   if (config.env !== 'test') {
     app.use(morgan('tiny', { stream: { write: (line) => logger.http(line.trim()) } }));
