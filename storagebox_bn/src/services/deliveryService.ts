@@ -1,8 +1,10 @@
 import { Readable } from 'stream';
 import { File, UsageKind } from '@prisma/client';
 import status from 'http-status';
+import { config } from '@/config/config';
 import prisma from '@/config/prisma';
 import { DeliveryTarget, verifyDeliverySignature } from '@/lib/deliveryUrl';
+import { renderViewerPage, ViewerKind, viewerKindFor } from '@/lib/documentViewer';
 import { isTransformable } from '@/lib/fileTypes';
 import { getObject, getObjectBuffer, putObject } from '@/lib/storage';
 import { applyTransform, parseTransform, TransformParseError } from '@/lib/transform';
@@ -11,6 +13,7 @@ import ApiError from '@/utils/ApiError';
 import { contentDisposition } from '@/utils/contentDisposition';
 import { sha256Hex } from '@/utils/crypto';
 import { ERROR_CODES } from '@/utils/errorCodes';
+import { formatBytes } from '@/utils/units';
 import { recordUsage } from './usageService';
 
 const PUBLIC_CACHE = 'public, max-age=86400, stale-while-revalidate=604800';
@@ -25,6 +28,8 @@ export interface DeliveryRequest {
   isDownload: boolean;
   range?: string;
   ifNoneMatch?: string;
+  /** Request URL when a browser navigates to the link; documents it can't display get a viewer page instead. */
+  viewerPath?: string;
 }
 
 export interface DeliveryResponse {
@@ -101,11 +106,50 @@ async function resolveDerivative(file: File, segment: string): Promise<Derivativ
   return { storageKey, mime: result.mime, buffer: result.buffer };
 }
 
+const isPubliclyReachable = (url: string): boolean => !/^https?:\/\/(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(url);
+
+function withQuery(requestPath: string, set: Record<string, string>, remove: string[]): string {
+  const url = new URL(requestPath, 'http://storagebox.local');
+  for (const key of remove) url.searchParams.delete(key);
+  for (const [key, value] of Object.entries(set)) url.searchParams.set(key, value);
+  return `${url.pathname}${url.search}`;
+}
+
+function viewerResponse(file: File, kind: ViewerKind, requestPath: string): DeliveryResponse {
+  const rawPath = withQuery(requestPath, { raw: '1' }, ['dl']);
+  const { html, csp } = renderViewerPage({
+    kind,
+    fileName: file.originalName,
+    sizeLabel: `${file.ext.toUpperCase()} · ${formatBytes(Number(file.sizeBytes))}`,
+    rawPath,
+    downloadPath: withQuery(requestPath, { dl: '1' }, ['raw']),
+    publicRawUrl: isPubliclyReachable(config.publicUrl) ? `${config.publicUrl}${rawPath}` : undefined,
+  });
+  const body = Buffer.from(html);
+  return {
+    statusCode: status.OK,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': String(body.length),
+      'Content-Security-Policy': csp,
+      'Cache-Control': 'no-cache',
+      Vary: 'Sec-Fetch-Dest, Accept',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'no-referrer',
+    },
+    body,
+  };
+}
+
 export async function deliver(request: DeliveryRequest): Promise<DeliveryResponse> {
   const { publicId, ext } = splitAsset(request.asset);
   const file = await findDeliverableFile(request.cloudName, publicId, ext);
   const target: DeliveryTarget = { cloudName: request.cloudName, publicId, ext, transform: request.transform };
   const expires = assertAccess(file, target, request);
+  const viewerKind = viewerKindFor(normalizeExt(file.ext));
+  if (viewerKind && request.viewerPath && !request.transform && !request.isDownload) {
+    return viewerResponse(file, viewerKind, request.viewerPath);
+  }
 
   const etag = `"${file.checksum.slice(0, 32)}${request.transform ? `-${sha256Hex(request.transform).slice(0, 8)}` : ''}"`;
   const baseHeaders: Record<string, string> = {
@@ -114,6 +158,7 @@ export async function deliver(request: DeliveryRequest): Promise<DeliveryRespons
     'Last-Modified': file.updatedAt.toUTCString(),
     'Content-Disposition': contentDisposition(file.originalName, request.isDownload ? 'attachment' : 'inline'),
     'X-Content-Type-Options': 'nosniff',
+    ...(viewerKind ? { Vary: 'Sec-Fetch-Dest, Accept' } : {}),
   };
   if (request.ifNoneMatch === etag) return { statusCode: status.NOT_MODIFIED, headers: baseHeaders };
 

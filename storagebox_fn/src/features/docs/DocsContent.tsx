@@ -251,6 +251,12 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
         <Note>
           In code, <code>storagebox.url(file, {"{ width: 400, format: \"webp\" }"})</code> builds the same link without a network call.
         </Note>
+        <Prose>
+          <p>
+            Word, Excel, CSV and Markdown links open in a built-in viewer when someone visits them in a browser. Your code still receives the
+            original bytes. Add <code>?raw=1</code> to always get the file itself, or <code>?dl=1</code> to download it.
+          </p>
+        </Prose>
       </DocSection>
 
       <DocSection id="webhooks" title="Webhooks">
