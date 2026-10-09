@@ -2,18 +2,22 @@ import path from 'path';
 import { randomBytes } from 'crypto';
 
 /** How a browser-opened document is shown: rendered in the page, or handed to Office Online. */
-export type ViewerKind = 'docx' | 'sheet' | 'text' | 'office';
+export type ViewerKind = 'pdf' | 'docx' | 'pptx' | 'sheet' | 'text' | 'office';
 
-/** Formats browsers download instead of displaying. PDF, images, video, audio, txt and json open natively. */
+/**
+ * Formats shown in the viewer page. Browsers download Office files, and many phones download PDFs,
+ * so those render here; images, video, audio, txt and json open natively.
+ */
 const VIEWER_KINDS: Record<string, ViewerKind> = {
+  pdf: 'pdf',
   docx: 'docx',
+  pptx: 'pptx',
   xlsx: 'sheet',
   xls: 'sheet',
   csv: 'sheet',
   md: 'text',
   doc: 'office',
   ppt: 'office',
-  pptx: 'office',
   odt: 'office',
   rtf: 'office',
 };
@@ -22,13 +26,21 @@ export const viewerKindFor = (ext: string): ViewerKind | undefined => VIEWER_KIN
 
 export const VIEWER_ASSET_PREFIX = '_viewer';
 
+const packageFile = (entry: string, file: string): string => path.join(path.dirname(require.resolve(entry)), file);
+
 export const VIEWER_ASSETS: Record<string, string> = {
-  'docx-preview.min.js': path.join(path.dirname(require.resolve('docx-preview')), 'docx-preview.min.js'),
+  'pdf.min.mjs': require.resolve('pdfjs-dist/build/pdf.min.mjs'),
+  'pdf.worker.min.mjs': require.resolve('pdfjs-dist/build/pdf.worker.min.mjs'),
+  'pptx-preview.umd.js': packageFile('pptx-preview', 'pptx-preview.umd.js'),
+  'docx-preview.min.js': packageFile('docx-preview', 'docx-preview.min.js'),
   'jszip.min.js': require.resolve('jszip/dist/jszip.min.js'),
   'xlsx.full.min.js': require.resolve('xlsx/dist/xlsx.full.min.js'),
 };
 
+/** PDF.js is an ES module, imported on demand by the page script rather than listed here. */
 const SCRIPTS_BY_KIND: Record<ViewerKind, string[]> = {
+  pdf: [],
+  pptx: ['pptx-preview.umd.js'],
   docx: ['jszip.min.js', 'docx-preview.min.js'],
   sheet: ['xlsx.full.min.js'],
   text: [],
@@ -73,12 +85,16 @@ main{flex:1;min-height:0;overflow:auto}
 .sheet tr:nth-child(even) td{background:#fcfdfe}.sheet tr:hover td{background:#eef2ff}
 pre{margin:24px auto;max-width:960px;padding:24px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;white-space:pre-wrap;word-break:break-word;font:14px/1.65 "JetBrains Mono",ui-monospace,monospace}
 iframe{border:0;width:100%;height:100%;background:#fff}
+.pages{display:flex;flex-direction:column;align-items:center;gap:24px;padding:32px 16px}
+.page{display:block;max-width:100%;height:auto!important;background:#fff;box-shadow:0 10px 30px -12px rgba(15,23,42,.35)}
+.pptx-preview-wrapper{height:auto!important;overflow:visible!important;background:transparent!important;display:flex!important;flex-direction:column;align-items:center;gap:24px;padding:32px 16px}
+.pptx-preview-slide-wrapper{margin:0!important;box-shadow:0 10px 30px -12px rgba(15,23,42,.35)}
 `;
 
 /** Self-contained page that renders a document the browser would otherwise download. */
 export function renderViewerPage(page: ViewerPage): { html: string; csp: string } {
   const nonce = randomBytes(16).toString('base64');
-  const config = JSON.stringify({ kind: page.kind, rawPath: page.rawPath, publicRawUrl: page.publicRawUrl ?? null, officeEmbedUrl: OFFICE_EMBED_URL }).replace(
+  const config = JSON.stringify({ kind: page.kind, rawPath: page.rawPath, publicRawUrl: page.publicRawUrl ?? null, officeEmbedUrl: OFFICE_EMBED_URL, assetBase: `/f/${VIEWER_ASSET_PREFIX}/` }).replace(
     /</g,
     '\\u003c',
   );
@@ -100,7 +116,20 @@ var cfg=${config};var view=document.getElementById('view');
 function message(text){view.innerHTML='';var box=document.createElement('div');box.className='status';box.textContent=text;view.appendChild(box)}
 function fetchRaw(type){return fetch(cfg.rawPath).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r[type]()})}
 function fail(){message('This document could not be shown here. Use Download to open it on your device.')}
-if(cfg.kind==='docx'){fetchRaw('blob').then(function(blob){view.innerHTML='';return docx.renderAsync(blob,view,null,{inWrapper:true,ignoreLastRenderedPageBreak:false,experimental:true})}).catch(fail)}
+function pageWidth(){return Math.max(240,Math.min(view.clientWidth-32,960))}
+if(cfg.kind==='pdf'){Promise.all([import(cfg.assetBase+'pdf.min.mjs'),fetchRaw('arrayBuffer')]).then(function(r){
+  var pdfjs=r[0];pdfjs.GlobalWorkerOptions.workerSrc=cfg.assetBase+'pdf.worker.min.mjs';return pdfjs.getDocument({data:new Uint8Array(r[1])}).promise}).then(function(pdf){
+  view.innerHTML='';var list=document.createElement('div');list.className='pages';view.appendChild(list);
+  var ratio=Math.min(window.devicePixelRatio||1,2);var width=pageWidth();
+  function draw(n){if(n>pdf.numPages)return;return pdf.getPage(n).then(function(page){
+    var fit=width/page.getViewport({scale:1}).width;var viewport=page.getViewport({scale:fit*ratio});
+    var canvas=document.createElement('canvas');canvas.className='page';canvas.width=Math.floor(viewport.width);canvas.height=Math.floor(viewport.height);
+    canvas.style.width=Math.floor(viewport.width/ratio)+'px';list.appendChild(canvas);
+    return page.render({canvas:canvas,viewport:viewport}).promise.then(function(){page.cleanup();return draw(n+1)})})}
+  return draw(1)}).catch(fail)}
+else if(cfg.kind==='pptx'){fetchRaw('arrayBuffer').then(function(buf){view.innerHTML='';var width=pageWidth();
+  return pptxPreview.init(view,{width:width,height:Math.round(width*9/16),mode:'list'}).preview(buf)}).catch(fail)}
+else if(cfg.kind==='docx'){fetchRaw('blob').then(function(blob){view.innerHTML='';return docx.renderAsync(blob,view,null,{inWrapper:true,ignoreLastRenderedPageBreak:false,experimental:true})}).catch(fail)}
 else if(cfg.kind==='sheet'){fetchRaw('arrayBuffer').then(function(buf){
   var book=XLSX.read(new Uint8Array(buf),{type:'array'});view.innerHTML='';
   var tabs=document.createElement('div');tabs.className='tabs';var sheet=document.createElement('div');sheet.className='sheet';
@@ -116,7 +145,8 @@ else{message('A preview for this file type is available once StorageBox is onlin
 
   const csp = [
     "default-src 'none'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval'`,
+    "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data: blob:",

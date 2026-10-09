@@ -17,6 +17,7 @@ import { formatBytes } from '@/utils/units';
 import { recordUsage } from './usageService';
 
 const PUBLIC_CACHE = 'public, max-age=86400, stale-while-revalidate=604800';
+const VIEWER_FILE_CACHE = 'private, no-cache';
 const MAX_PRIVATE_CACHE_SECONDS = 3600;
 
 export interface DeliveryRequest {
@@ -156,7 +157,8 @@ export async function deliver(request: DeliveryRequest): Promise<DeliveryRespons
   const etag = `"${file.checksum.slice(0, 32)}${request.transform ? `-${sha256Hex(request.transform).slice(0, 8)}` : ''}"`;
   const baseHeaders: Record<string, string> = {
     ETag: etag,
-    'Cache-Control': cacheControl(expires),
+    /** Viewer-capable files answer browsers with HTML and apps with bytes on one URL, so no shared or stale copy may be reused. */
+    'Cache-Control': viewerKind ? VIEWER_FILE_CACHE : cacheControl(expires),
     'Last-Modified': file.updatedAt.toUTCString(),
     'Content-Disposition': contentDisposition(file.originalName, request.isDownload ? 'attachment' : 'inline'),
     'X-Content-Type-Options': 'nosniff',

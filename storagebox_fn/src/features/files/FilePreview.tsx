@@ -99,10 +99,9 @@ export function FilePreview({ file, isFill = false }: { file: StoredFile; isFill
           <img src={url} alt={file.originalName} className="max-h-[62vh] max-w-full rounded object-contain" />
         </div>
       );
-    case "pdf":
-      return <iframe src={url} title={file.originalName} className={frame} />;
     case "docx":
       return <DocxPreview file={file} url={url} frame={frame} />;
+    case "pdf":
     case "sheet":
     case "office":
       return <iframe src={embeddedViewerUrl(url)} title={file.originalName} className={`${frame} bg-white`} />;
