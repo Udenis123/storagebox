@@ -13,15 +13,15 @@ const PROOF_POINTS = [
 
 export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
   return (
-    <div className="grid min-h-dvh bg-card lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-      <div className="flex flex-col px-6 py-8 sm:px-12">
+    <div className="grid min-h-dvh bg-card lg:h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:overflow-hidden">
+      <div className="flex flex-col px-6 py-5 sm:px-12 lg:overflow-y-auto">
         <Link to="/" aria-label="StorageBox home" className="w-fit">
           <Logo className="[&_img]:size-8 [&>span]:text-lg" />
         </Link>
 
-        <main className="mx-auto grid w-full max-w-[25rem] flex-1 content-center gap-9 py-14">
-          <div className="grid gap-3">
-            <h1 className="text-[2.1rem] leading-tight font-semibold tracking-[-0.035em] sm:text-[2.5rem]">{title}</h1>
+        <main className="mx-auto grid w-full max-w-[27rem] flex-1 content-center gap-6 py-4">
+          <div className="grid gap-2">
+            <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.035em] sm:text-[2.25rem]">{title}</h1>
             <p className="text-base leading-relaxed text-muted-foreground sm:text-[1.05rem]">{subtitle}</p>
           </div>
           {children}

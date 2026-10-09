@@ -70,7 +70,7 @@ export default function LoginPage() {
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to your StorageBox account to manage files, links and API keys.">
       {blocked && <BlockedNotice reason={blocked} />}
-      <form className="grid gap-5" onSubmit={onSubmit} noValidate>
+      <form className="grid gap-4" onSubmit={onSubmit} noValidate>
         <FormField label="Email" htmlFor="email" error={errors.email?.message}>
           <IconInput icon={Mail} id="email" type="email" autoComplete="email" placeholder="you@company.com" {...form.register("email")} />
         </FormField>

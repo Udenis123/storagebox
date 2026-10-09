@@ -84,9 +84,9 @@ export default function RegisterPage() {
   });
 
   return (
-    <AuthLayout title="Request an account" subtitle="Tell us who you are. An administrator approves new accounts and sets your storage.">
-      <form className="grid gap-5" onSubmit={onSubmit} noValidate>
-        <div className="grid gap-5">
+    <AuthLayout title="Request an account" subtitle="An administrator approves new accounts and sets your storage.">
+      <form className="grid gap-4" onSubmit={onSubmit} noValidate>
+        <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Your name" htmlFor="name" error={errors.name?.message}>
             <IconInput icon={UserRound} id="name" autoComplete="name" placeholder="Jane Doe" {...form.register("name")} />
           </FormField>
@@ -97,8 +97,8 @@ export default function RegisterPage() {
         <FormField label="Work email" htmlFor="email" error={errors.email?.message}>
           <IconInput icon={Mail} id="email" type="email" autoComplete="email" placeholder="you@company.com" {...form.register("email")} />
         </FormField>
-        <FormField label="Password" htmlFor="password" hint="At least 8 characters." error={errors.password?.message}>
-          <PasswordInput id="password" autoComplete="new-password" placeholder="Choose a password" {...form.register("password")} />
+        <FormField label="Password" htmlFor="password" error={errors.password?.message}>
+          <PasswordInput id="password" autoComplete="new-password" placeholder="At least 8 characters" {...form.register("password")} />
         </FormField>
         <Button type="submit" className="mt-2 h-12 rounded-lg text-base" disabled={isSubmitting}>
           {isSubmitting && <Loader2 className="animate-spin" />}
@@ -106,16 +106,12 @@ export default function RegisterPage() {
           {!isSubmitting && <ArrowRight />}
         </Button>
       </form>
-      <div className="grid gap-4">
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="h-px flex-1 bg-border" />
-          Already approved?
-          <span className="h-px flex-1 bg-border" />
-        </div>
-        <Button variant="outline" className="h-12 rounded-lg text-base" render={<Link to="/login" />}>
+      <p className="text-center text-base text-muted-foreground">
+        Already approved?{" "}
+        <Link to="/login" className="font-medium text-primary hover:underline">
           Sign in
-        </Button>
-      </div>
+        </Link>
+      </p>
     </AuthLayout>
   );
 }
