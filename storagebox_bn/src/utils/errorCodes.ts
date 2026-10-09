@@ -36,6 +36,8 @@ export const ERROR_CODES = {
   WEBHOOK_NOT_FOUND: 'E6000',
   API_KEY_NOT_FOUND: 'E6001',
   ACCOUNT_NOT_FOUND: 'E6002',
+  STORAGE_REQUEST_NOT_FOUND: 'E6003',
+  STORAGE_REQUEST_REVIEWED: 'E6004',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

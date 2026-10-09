@@ -28,6 +28,12 @@ enum AccountStatus {
   REJECTED
 }
 
+enum StorageRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
 enum UsageKind {
   UPLOAD
   DELETE
@@ -36,8 +42,8 @@ enum UsageKind {
 }
 
 model Account {
-  id          String   @id @default(cuid())
-  cloudName   String   @unique
+  id          String        @id @default(cuid())
+  cloudName   String        @unique
   name        String
   quotaBytes  BigInt
   status      AccountStatus @default(PENDING)
@@ -46,13 +52,14 @@ model Account {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  users       User[]
-  collections Collection[]
-  files       File[]
-  apiKeys     ApiKey[]
-  usage       UsageEvent[]
-  webhooks    Webhook[]
-  activity    ActivityLog[]
+  users           User[]
+  collections     Collection[]
+  files           File[]
+  apiKeys         ApiKey[]
+  usage           UsageEvent[]
+  webhooks        Webhook[]
+  activity        ActivityLog[]
+  storageRequests StorageRequest[]
 }
 
 model User {
@@ -204,4 +211,21 @@ model ActivityLog {
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId, createdAt])
+}
+
+model StorageRequest {
+  id             String               @id @default(cuid())
+  accountId      String
+  requestedBytes BigInt
+  grantedBytes   BigInt?
+  reason         String?
+  requestedBy    String
+  status         StorageRequestStatus @default(PENDING)
+  reviewedAt     DateTime?
+  createdAt      DateTime             @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, createdAt])
+  @@index([status])
 }

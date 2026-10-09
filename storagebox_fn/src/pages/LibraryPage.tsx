@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { FileSort } from "@/features/files/api";
 import { BulkActions } from "@/features/files/BulkActions";
 import { ALL_FILES, CollectionTree } from "@/features/files/CollectionTree";
-import { FileDetailsDialog } from "@/features/files/FileDetailsDialog";
+import { AssetViewer } from "@/features/files/viewer/AssetViewer";
 import { FileGrid, FileTable } from "@/features/files/FileCollection";
 import { useCollections, useFile, useFiles } from "@/features/files/hooks";
 import { UploadZone } from "@/features/files/UploadZone";
@@ -178,7 +178,12 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      <FileDetailsDialog file={openFileId ? (openFile ?? null) : null} onClose={() => setParam({ file: null }, false)} />
+      <AssetViewer
+        file={openFileId ? (openFile ?? null) : null}
+        siblings={data?.items ?? []}
+        onNavigate={openDetails}
+        onClose={() => setParam({ file: null }, false)}
+      />
     </>
   );
 }

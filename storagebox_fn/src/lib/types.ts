@@ -112,6 +112,33 @@ export type AdminAccount = {
 
 export type UpdateAccountInput = { status?: Exclude<AccountStatus, "PENDING">; quotaGb?: number; isSuspended?: boolean };
 
-export type PlatformStats = { accountCount: number; pendingCount: number; userCount: number; fileCount: number; storageBytes: number };
+export type PlatformStats = {
+  accountCount: number;
+  pendingCount: number;
+  storageRequestCount: number;
+  userCount: number;
+  fileCount: number;
+  storageBytes: number;
+};
+
+export type StorageRequestStatus = "PENDING" | "APPROVED" | "DECLINED";
+
+export type StorageRequest = {
+  id: string;
+  status: StorageRequestStatus;
+  requestedBytes: number;
+  grantedBytes?: number;
+  reason?: string;
+  requestedBy: string;
+  reviewedAt?: string;
+  createdAt: string;
+};
+
+export type AdminStorageRequest = StorageRequest & {
+  account: { id: string; name: string; cloudName: string; quotaBytes: number; storageBytes: number };
+};
+
+export type RequestStorageInput = { quotaGb: number; reason?: string };
+export type ReviewStorageRequestInput = { status: Exclude<StorageRequestStatus, "PENDING">; quotaGb?: number };
 
 export type RegistrationResult = { email: string; status: AccountStatus };

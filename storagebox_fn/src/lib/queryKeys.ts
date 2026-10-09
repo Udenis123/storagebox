@@ -10,4 +10,6 @@ export const queryKeys = {
   activity: (page: number) => ["activity", page] as const,
   adminStats: ["admin", "stats"] as const,
   adminAccounts: ["admin", "accounts"] as const,
+  adminStorageRequests: ["admin", "storage-requests"] as const,
+  storageRequest: ["storage-request"] as const,
 };

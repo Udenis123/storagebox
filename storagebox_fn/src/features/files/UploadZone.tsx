@@ -1,8 +1,11 @@
 import { useCallback, useRef, useState, type DragEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, CloudUpload, Loader2, X, XCircle } from "lucide-react";
+import { CheckCircle2, CloudUpload, HardDrive, Loader2, Rocket, X, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useStorageHealth } from "@/features/storage/hooks";
+import { useStorageUpgrade } from "@/features/storage/upgradeContext";
+import { ApiRequestError } from "@/lib/api";
 import { ALLOWED_FILE_ACCEPT, MAX_FILES_PER_UPLOAD, MAX_UPLOAD_MB } from "@/lib/constants";
 import { formatBytes } from "@/lib/format";
 import { queryKeys } from "@/lib/queryKeys";
@@ -21,12 +24,15 @@ type UploadZoneProps = {
 
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 const CONCURRENT_UPLOADS = 3;
+const QUOTA_EXCEEDED_CODE = "E4003";
 
 export function UploadZone({ collectionId, collectionLabel, access }: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const [isDragging, setIsDragging] = useState(false);
   const [tasks, setTasks] = useState<UploadTask[]>([]);
+  const health = useStorageHealth();
+  const { openUpgrade } = useStorageUpgrade();
 
   const patchTask = (id: string, patch: Partial<UploadTask>) =>
     setTasks((current) => current.map((task) => (task.id === id ? { ...task, ...patch } : task)));
@@ -48,7 +54,11 @@ export function UploadZone({ collectionId, collectionLabel, access }: UploadZone
           await uploadFile(file, { collectionId, access }, (progress) => patchTask(task.id, { progress }));
           patchTask(task.id, { status: "done", progress: 100 });
         } catch (error) {
-          patchTask(task.id, { status: "error", error: error instanceof Error ? error.message : "Upload failed" });
+          const isQuotaError = error instanceof ApiRequestError && error.errorCode === QUOTA_EXCEEDED_CODE;
+          patchTask(task.id, { status: "error", error: isQuotaError ? "Not enough storage" : error instanceof Error ? error.message : "Upload failed" });
+          if (isQuotaError) {
+            toast.error("Your storage is full", { id: QUOTA_EXCEEDED_CODE, action: { label: "Upgrade", onClick: openUpgrade } });
+          }
         }
       };
 
@@ -59,7 +69,7 @@ export function UploadZone({ collectionId, collectionLabel, access }: UploadZone
       await Promise.all(workers);
       await Promise.all([queryKeys.files, queryKeys.collections, queryKeys.usage].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
     },
-    [collectionId, access, queryClient],
+    [collectionId, access, queryClient, openUpgrade],
   );
 
   const onDrop = (event: DragEvent) => {
@@ -69,6 +79,23 @@ export function UploadZone({ collectionId, collectionLabel, access }: UploadZone
   };
 
   const finishedCount = tasks.filter((task) => task.status !== "uploading").length;
+
+  if (health?.level === "full") {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-destructive/30 bg-destructive/5 p-6 text-center md:p-8">
+        <HardDrive className="size-10 text-destructive" />
+        <div className="grid gap-1">
+          <span className="text-base font-semibold md:text-lg">Your storage is full</span>
+          <span className="text-sm text-muted-foreground md:text-base">
+            Uploads are paused at {formatBytes(health.quotaBytes)}. Delete files you no longer need or ask for more space.
+          </span>
+        </div>
+        <Button size="lg" onClick={openUpgrade}>
+          <Rocket /> Upgrade storage
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-3">

@@ -109,3 +109,13 @@ export const updateAccountSchema = Joi.object({
   quotaGb: Joi.number().min(0.1).max(100_000),
   isSuspended: Joi.boolean(),
 }).min(1);
+
+export const requestStorageSchema = Joi.object({
+  quotaGb: Joi.number().min(0.1).max(100_000).required(),
+  reason: optionalOrEmpty(Joi.string().trim().max(500)),
+});
+
+export const reviewStorageRequestSchema = Joi.object({
+  status: Joi.string().valid('APPROVED', 'DECLINED').required(),
+  quotaGb: Joi.number().min(0.1).max(100_000),
+});

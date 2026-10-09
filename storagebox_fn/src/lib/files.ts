@@ -30,4 +30,13 @@ export function previewKindOf(file: Pick<StoredFile, "kind" | "ext">): PreviewKi
 
 export const THUMBNAIL_TRANSFORM = "w_480,h_360,c_fill,q_75,f_webp";
 
+/** Inserts a transformation segment before the file name: `/f/acme/x.jpg` → `/f/acme/w_400/x.jpg`. */
+export const applyTransform = (url: string, transform: string): string =>
+  transform ? url.replace(/\/([^/?]+)(\?.*)?$/, `/${transform}/$1$2`) : url;
+
+export const isTransformable = (file: Pick<StoredFile, "kind" | "ext">): boolean => file.kind === "image" && file.ext !== "svg";
+
+/** Appends `dl=1` so the delivery route answers with `Content-Disposition: attachment`. */
+export const downloadUrl = (url: string): string => `${url}${url.includes("?") ? "&" : "?"}dl=1`;
+
 export const fileTypeLabel = (file: Pick<StoredFile, "ext">): string => file.ext.toUpperCase();

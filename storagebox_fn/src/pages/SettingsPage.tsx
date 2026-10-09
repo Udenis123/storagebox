@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { changePassword, updateProfile } from "@/features/auth/api";
+import { StoragePlanCard } from "@/features/storage/StorageAlerts";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { API_BASE_URL } from "@/lib/constants";
 
@@ -89,7 +90,7 @@ export default function SettingsPage() {
   const cloudName = user?.account.cloudName ?? "";
   return (
     <>
-      <PageHeader title="Settings" description="Your profile, account and security." />
+      <PageHeader title="Settings" description="Your profile, storage plan and security." />
       <div className="grid items-start gap-6 xl:grid-cols-2">
         <div className="grid content-start gap-6">
           <section className={CARD}>
@@ -100,7 +101,10 @@ export default function SettingsPage() {
           </section>
           <ProfileForm />
         </div>
-        <PasswordForm />
+        <div className="grid content-start gap-6">
+          <StoragePlanCard />
+          <PasswordForm />
+        </div>
       </div>
     </>
   );

@@ -2,6 +2,11 @@ import { format, formatDistanceToNow } from "date-fns";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"];
 
+export const BYTES_PER_GB = 1024 ** 3;
+
+/** Quota in GB for inputs, trimmed to 2 decimals. */
+export const toGb = (bytes: number): string => String(+(bytes / BYTES_PER_GB).toFixed(2));
+
 export function formatBytes(bytes: number): string {
   let value = bytes;
   let unit = 0;
@@ -27,3 +32,6 @@ export const initialsOf = (name: string): string =>
     .slice(0, 2)
     .map((word) => word.charAt(0).toUpperCase())
     .join("") || "?";
+
+export const pluralize = (count: number, singular: string, plural = `${singular}s`): string =>
+  `${count} ${count === 1 ? singular : plural}`;

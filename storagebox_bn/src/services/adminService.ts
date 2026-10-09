@@ -4,9 +4,8 @@ import { AccountContext, AccountStatus } from '@/types/api';
 import ApiError from '@/utils/ApiError';
 import { ERROR_CODES } from '@/utils/errorCodes';
 import { ServiceResult } from '@/utils/response';
+import { gbToBytes } from '@/utils/units';
 import { logActivity } from './activityService';
-
-const BYTES_PER_GB = 1024 * 1024 * 1024;
 
 export interface AdminAccount {
   id: string;
@@ -25,6 +24,7 @@ export interface AdminAccount {
 export interface PlatformStats {
   accountCount: number;
   pendingCount: number;
+  storageRequestCount: number;
   userCount: number;
   fileCount: number;
   storageBytes: number;
@@ -92,7 +92,7 @@ export async function updateAccount(
     data: {
       status: input.status,
       reviewedAt: isReview ? new Date() : undefined,
-      quotaBytes: input.quotaGb === undefined ? undefined : BigInt(Math.round(input.quotaGb * BYTES_PER_GB)),
+      quotaBytes: input.quotaGb === undefined ? undefined : gbToBytes(input.quotaGb),
       isSuspended: input.isSuspended,
     },
   });
@@ -111,14 +111,15 @@ async function revokeAccess(accountId: string): Promise<void> {
 }
 
 export async function getPlatformStats(): Promise<ServiceResult<PlatformStats>> {
-  const [accountCount, pendingCount, userCount, files] = await Promise.all([
+  const [accountCount, pendingCount, storageRequestCount, userCount, files] = await Promise.all([
     prisma.account.count(),
     prisma.account.count({ where: { status: AccountStatus.PENDING } }),
+    prisma.storageRequest.count({ where: { status: 'PENDING' } }),
     prisma.user.count(),
     prisma.file.aggregate({ _count: { _all: true }, _sum: { sizeBytes: true } }),
   ]);
   return {
     message: 'Platform stats retrieved',
-    data: { accountCount, pendingCount, userCount, fileCount: files._count._all, storageBytes: Number(files._sum.sizeBytes ?? 0) },
+    data: { accountCount, pendingCount, storageRequestCount, userCount, fileCount: files._count._all, storageBytes: Number(files._sum.sizeBytes ?? 0) },
   };
 }

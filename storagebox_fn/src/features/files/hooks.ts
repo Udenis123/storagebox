@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { applyTransform, isTransformable } from "@/lib/files";
 import { queryKeys } from "@/lib/queryKeys";
 import type { StoredFile } from "@/lib/types";
 import {
@@ -47,9 +48,8 @@ export function useCollections() {
  * link for private ones. `transform` is applied to images only (thumbnails).
  */
 export function useViewUrl(file: StoredFile | null, transform = "") {
-  const isTransformed = Boolean(transform) && file?.kind === "image" && file.ext !== "svg";
-  const appliedTransform = isTransformed ? transform : "";
-  const publicUrl = file?.url && appliedTransform ? file.url.replace(/\/([^/]+)$/, `/${appliedTransform}/$1`) : file?.url;
+  const appliedTransform = file && isTransformable(file) ? transform : "";
+  const publicUrl = file?.url ? applyTransform(file.url, appliedTransform) : undefined;
 
   const signed = useQuery({
     queryKey: queryKeys.signedLink(file?.id ?? "", appliedTransform, SIGNED_PREVIEW_SECONDS),

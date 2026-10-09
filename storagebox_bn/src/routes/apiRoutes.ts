@@ -8,7 +8,15 @@ import {
   registerHandler,
   updateProfileHandler,
 } from '@/controllers/authController';
-import { listAccountsHandler, platformStatsHandler, updateAccountHandler } from '@/controllers/adminController';
+import {
+  latestStorageRequestHandler,
+  listAccountsHandler,
+  listStorageRequestsHandler,
+  platformStatsHandler,
+  requestStorageHandler,
+  reviewStorageRequestHandler,
+  updateAccountHandler,
+} from '@/controllers/adminController';
 import {
   activityHandler,
   createApiKeyHandler,
@@ -52,10 +60,20 @@ router.delete('/webhooks/:id', auth(), deleteWebhookHandler);
 router.post('/webhooks/:id/test', auth(), testWebhookHandler);
 
 router.get('/usage', auth(), usageHandler);
+router.get('/storage-requests/latest', auth(), latestStorageRequestHandler);
+router.post('/storage-requests', auth(), validation(schemas.requestStorageSchema), requestStorageHandler);
+
 router.get('/activity', auth(), validation(schemas.paginationQuerySchema, 'query'), activityHandler);
 
 router.get('/admin/stats', auth(UserRole.ADMIN), platformStatsHandler);
 router.get('/admin/accounts', auth(UserRole.ADMIN), listAccountsHandler);
 router.patch('/admin/accounts/:id', auth(UserRole.ADMIN), validation(schemas.updateAccountSchema), updateAccountHandler);
+router.get('/admin/storage-requests', auth(UserRole.ADMIN), listStorageRequestsHandler);
+router.patch(
+  '/admin/storage-requests/:id',
+  auth(UserRole.ADMIN),
+  validation(schemas.reviewStorageRequestSchema),
+  reviewStorageRequestHandler,
+);
 
 export default router;

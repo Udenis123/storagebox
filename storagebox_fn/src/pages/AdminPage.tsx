@@ -11,18 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminStorageRequests } from "@/features/storage/AdminStorageRequests";
 import { useAdminAccounts, usePlatformStats, useUpdateAccount } from "@/features/developer/hooks";
-import { formatBytes, formatDate, percentOf } from "@/lib/format";
+import { formatBytes, formatDate, percentOf, pluralize, toGb } from "@/lib/format";
 import type { AdminAccount } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const BYTES_PER_GB = 1024 ** 3;
 const DEFAULT_QUOTA_GB = 5;
 const QUOTA_PRESETS_GB = [1, 5, 10, 25, 50, 100];
 
 type StorageDialogState = { account: AdminAccount; mode: "approve" | "quota" } | null;
-
-const toGb = (bytes: number): string => String(+(bytes / BYTES_PER_GB).toFixed(2));
 
 function StorageDialog({ state, onClose }: { state: NonNullable<StorageDialogState>; onClose: () => void }) {
   const { account, mode } = state;
@@ -85,7 +83,7 @@ type RequestActions = { onApprove: (account: AdminAccount) => void; onReject: (a
 
 function AccessRequests({ requests, onApprove, onReject }: { requests: AdminAccount[] } & RequestActions) {
   return (
-    <section className="mt-6 grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
+    <section className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
       <div className="flex items-center gap-3">
         <span className="flex size-10 items-center justify-center rounded-lg bg-tone-warning-bg text-tone-warning">
           <Inbox className="size-5" />
@@ -147,14 +145,23 @@ export default function AdminPage() {
       <PageHeader title="Admin" description="Review access requests and decide how much storage each account gets." />
       {stats.data && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Pending requests" value={stats.data.pendingCount} icon={Inbox} tone="amber" />
+          <StatCard
+            title="Waiting for you"
+            value={stats.data.pendingCount + stats.data.storageRequestCount}
+            icon={Inbox}
+            tone="amber"
+            hint={`${pluralize(stats.data.pendingCount, "sign-up")} · ${pluralize(stats.data.storageRequestCount, "upgrade")}`}
+          />
           <StatCard title="Accounts" value={stats.data.accountCount} icon={Building2} hint={`${stats.data.userCount} users`} />
           <StatCard title="Files" value={stats.data.fileCount.toLocaleString()} icon={Files} tone="emerald" />
           <StatCard title="Total storage" value={formatBytes(stats.data.storageBytes)} icon={HardDrive} tone="slate" />
         </div>
       )}
 
-      <AccessRequests requests={requests} onApprove={approve} onReject={setRejecting} />
+      <div className="mt-6 grid gap-6 2xl:grid-cols-2">
+        <AccessRequests requests={requests} onApprove={approve} onReject={setRejecting} />
+        <AdminStorageRequests />
+      </div>
 
       <h2 className="mt-8 mb-3 text-lg font-semibold">Accounts</h2>
       <div className="overflow-x-auto rounded-xl border bg-card">

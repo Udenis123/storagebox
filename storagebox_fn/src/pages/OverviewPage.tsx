@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ActivityChart, StorageByKindChart } from "@/features/developer/UsageCharts";
 import { RecentFiles } from "@/features/files/RecentFiles";
 import { useUsage } from "@/features/developer/hooks";
+import { useStorageUpgrade } from "@/features/storage/upgradeContext";
 import { credentialsEnv } from "@/features/developer/credentials";
 import { SDK_PACKAGE } from "@/lib/constants";
 import { formatBytes, percentOf } from "@/lib/format";
@@ -16,6 +17,7 @@ import { formatBytes, percentOf } from "@/lib/format";
 export default function OverviewPage() {
   const { user } = useAuth();
   const { data: usage, isLoading, error } = useUsage();
+  const { openUpgrade } = useStorageUpgrade();
 
   if (isLoading) return <PageSkeleton />;
   if (error || !usage) return <ErrorDisplay error={error} />;
@@ -51,7 +53,19 @@ console.log(file.url);`;
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Storage used" value={formatBytes(usage.storageBytes)} icon={HardDrive} hint={`of ${formatBytes(usage.quotaBytes)}`}>
+        <StatCard
+          title="Storage used"
+          value={formatBytes(usage.storageBytes)}
+          icon={HardDrive}
+          hint={
+            <span className="flex items-center justify-between gap-2">
+              of {formatBytes(usage.quotaBytes)}
+              <button type="button" onClick={openUpgrade} className="font-medium text-primary hover:underline">
+                Upgrade
+              </button>
+            </span>
+          }
+        >
           <UsageBar percent={storagePercent} />
         </StatCard>
         <StatCard title="Files" value={usage.fileCount.toLocaleString()} icon={Upload} tone="emerald" hint={`in ${usage.collectionCount} collections`} />

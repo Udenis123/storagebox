@@ -20,6 +20,9 @@ const ACTION_TEXT: Record<string, string> = {
   "admin.account_updated": "updated account",
   "admin.account_approved": "approved account",
   "admin.account_rejected": "rejected account",
+  "admin.storage_approved": "upgraded storage for",
+  "admin.storage_declined": "declined a storage request from",
+  "storage.requested": "requested storage of",
 };
 
 const iconFor = (action: string) => {
