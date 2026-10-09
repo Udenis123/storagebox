@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryKeys } from "@/lib/queryKeys";
-import type { ApiKeyScope, CreatedApiKey } from "@/lib/types";
+import type { ApiKeyScope, CreatedApiKey, UpdateAccountInput } from "@/lib/types";
 import {
   createApiKey,
   createWebhook,
@@ -56,14 +56,13 @@ export const useActivity = (page: number) =>
     placeholderData: keepPreviousData,
   });
 
-export const usePlatformStats = () =>
-  useQuery({ queryKey: queryKeys.adminStats, queryFn: async () => (await getPlatformStats()).data });
+export const usePlatformStats = (isEnabled = true) =>
+  useQuery({ queryKey: queryKeys.adminStats, queryFn: async () => (await getPlatformStats()).data, enabled: isEnabled });
 
 export const useAdminAccounts = () =>
   useQuery({ queryKey: queryKeys.adminAccounts, queryFn: async () => (await listAccounts()).data });
 
 export const useUpdateAccount = () =>
-  useApiMutation(
-    ({ id, ...input }: { id: string; quotaGb?: number; isSuspended?: boolean }) => updateAccount(id, input),
-    { invalidate: [queryKeys.adminAccounts, queryKeys.adminStats] },
-  );
+  useApiMutation(({ id, ...input }: UpdateAccountInput & { id: string }) => updateAccount(id, input), {
+    invalidate: [queryKeys.adminAccounts, queryKeys.adminStats],
+  });

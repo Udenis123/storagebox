@@ -11,12 +11,27 @@ expect_status() { [ "$1" = "$2" ] && pass "$3 ($1)" || fail "$3 — expected $2,
 
 echo "StorageBox smoke test → $API"
 
+ADMIN_EMAIL="${ADMIN_EMAIL:-$(sed -n 's/^ADMIN_EMAIL=//p' .env)}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-$(sed -n 's/^ADMIN_PASSWORD=//p' .env)}"
+login() { curl -s "$API/api/auth/login" -H 'content-type: application/json' -d "{\"email\":\"$1\",\"password\":\"$2\"}"; }
+
 EMAIL="smoke-$(date +%s)@example.com"
-SESSION=$(curl -sf "$API/api/auth/register" -H 'content-type: application/json' \
-  -d "{\"name\":\"Smoke Tester\",\"email\":\"$EMAIL\",\"password\":\"Password123!\",\"accountName\":\"Smoke Co\"}")
+curl -sf "$API/api/auth/register" -H 'content-type: application/json' \
+  -d "{\"name\":\"Smoke Tester\",\"email\":\"$EMAIL\",\"password\":\"Password123!\",\"accountName\":\"Smoke Co\"}" >/dev/null
+pass "signed up $EMAIL"
+expect_status "$(login "$EMAIL" 'Password123!' | jq -r .errorCode)" E2008 "pending account cannot sign in"
+
+ADMIN_TOKEN=$(login "$ADMIN_EMAIL" "$ADMIN_PASSWORD" | jq -r .data.accessToken)
+ACCOUNT_ID=$(curl -sf "$API/api/admin/accounts" -H "authorization: Bearer $ADMIN_TOKEN" | jq -r --arg e "$EMAIL" '.data[] | select(.owner.email == $e) | .id')
+curl -sf -X PATCH "$API/api/admin/accounts/$ACCOUNT_ID" -H "authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' \
+  -d '{"status":"ACTIVE","quotaGb":2}' >/dev/null
+pass "admin approved the account with a 2 GB quota"
+
+SESSION=$(login "$EMAIL" 'Password123!')
 TOKEN=$(jq -r .data.accessToken <<<"$SESSION")
 CLOUD=$(jq -r .data.user.account.cloudName <<<"$SESSION")
-pass "registered $EMAIL (cloud: $CLOUD)"
+QUOTA=$(jq -r .data.user.account.quotaBytes <<<"$SESSION")
+expect_status "$QUOTA" 2147483648 "signed in with the approved quota, cloud $CLOUD"
 
 KEY=$(curl -sf "$API/api/keys" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{"name":"smoke"}')
 BASIC=$(printf '%s:%s' "$(jq -r .data.keyId <<<"$KEY")" "$(jq -r .data.secret <<<"$KEY")" | base64)

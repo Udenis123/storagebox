@@ -1,11 +1,12 @@
 import { Suspense, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { LogOut, Menu, X } from "lucide-react";
 import { PageSkeleton } from "@/components/shared/States";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUsage } from "@/features/developer/hooks";
+import { usePlatformStats, useUsage } from "@/features/developer/hooks";
 import { formatBytes, initialsOf, percentOf } from "@/lib/format";
+import { ADMIN_HOME } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { UsageBar } from "@/components/shared/StatCard";
 import { Logo } from "./Logo";
@@ -13,6 +14,8 @@ import { NAV_SECTIONS } from "./navigation";
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin } = useAuth();
+  const { data: stats } = usePlatformStats(isAdmin);
+  const pendingCount = stats?.pendingCount ?? 0;
   return (
     <nav className="grid gap-6">
       {NAV_SECTIONS.map((section) => (
@@ -24,7 +27,6 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               <NavLink
                 key={to}
                 to={to}
-                end={to === "/"}
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   cn(
@@ -35,6 +37,9 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               >
                 <Icon className="size-5" />
                 {label}
+                {to === ADMIN_HOME && pendingCount > 0 && (
+                  <span className="ml-auto rounded-full bg-tone-warning-bg px-2 py-0.5 text-xs font-bold text-tone-warning">{pendingCount}</span>
+                )}
               </NavLink>
             ))}
         </div>
@@ -87,7 +92,9 @@ export function AppLayout() {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[17rem_1fr]">
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r bg-sidebar p-4 lg:flex">
-        <Logo className="px-2 pt-1" />
+        <Link to="/" aria-label="StorageBox home" className="px-2 pt-1">
+          <Logo />
+        </Link>
         <div className="flex-1 overflow-y-auto">
           <SidebarNav />
         </div>

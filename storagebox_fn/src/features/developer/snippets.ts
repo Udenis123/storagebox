@@ -1,3 +1,5 @@
+import { SDK_PACKAGE } from "@/lib/constants";
+
 export type SnippetLanguage = "curl" | "sdk" | "python";
 
 export const SNIPPET_LANGUAGES: { value: SnippetLanguage; label: string }[] = [
@@ -18,7 +20,7 @@ export type DocsSnippets = {
 export function buildSnippets(apiUrl: string): DocsSnippets {
   return {
     upload: {
-      curl: `curl -u "$STORAGEBOX_KEY:$STORAGEBOX_SECRET" \\
+      curl: `curl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" \\
   -F "file=@contract.pdf" \\
   -F "collection=contracts/2026" \\
   -F "access=PRIVATE" \\
@@ -26,16 +28,14 @@ export function buildSnippets(apiUrl: string): DocsSnippets {
   ${apiUrl}/v1/files
 
 # Import from a URL instead of a local file
-curl -u "$STORAGEBOX_KEY:$STORAGEBOX_SECRET" -H "content-type: application/json" \\
+curl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" -H "content-type: application/json" \\
   -d '{"url":"https://example.com/report.pdf","collection":"reports"}' \\
   ${apiUrl}/v1/files`,
-      sdk: `import { StorageBox } from "@storagebox/sdk";
+      sdk: `// npm install ${SDK_PACKAGE}
+import { StorageBox } from "${SDK_PACKAGE}";
 
-const storagebox = new StorageBox({
-  baseUrl: "${apiUrl}",
-  apiKey: process.env.STORAGEBOX_KEY!,
-  apiSecret: process.env.STORAGEBOX_SECRET!,
-});
+// Reads STORAGEBOX_CLOUD_NAME, STORAGEBOX_API_KEY and STORAGEBOX_API_SECRET from the environment
+const storagebox = new StorageBox();
 
 // Browser: a File from <input type="file">. Node: { data: await readFile(path), filename }
 const file = await storagebox.files.upload(myFile, {
@@ -48,7 +48,7 @@ console.log(file.publicId, file.url);
 const thumbnail = storagebox.url(file, { width: 400, format: "webp" });`,
       python: `import os, requests
 
-auth = (os.environ["STORAGEBOX_KEY"], os.environ["STORAGEBOX_SECRET"])
+auth = (os.environ["STORAGEBOX_API_KEY"], os.environ["STORAGEBOX_API_SECRET"])
 with open("contract.pdf", "rb") as handle:
     response = requests.post(
         "${apiUrl}/v1/files",
@@ -60,7 +60,7 @@ file = response.json()["data"][0]
 print(file["publicId"], file.get("url"))`,
     },
     list: {
-      curl: `curl -u "$STORAGEBOX_KEY:$STORAGEBOX_SECRET" \\
+      curl: `curl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" \\
   "${apiUrl}/v1/files?collection=contracts/2026&kind=document&page=1&pageSize=30"`,
       sdk: `const { items, total } = await storagebox.files.list({
   collection: "contracts/2026",
@@ -75,7 +75,7 @@ print(file["publicId"], file.get("url"))`,
 files = response.json()["data"]["items"]`,
     },
     signed: {
-      curl: `curl -u "$STORAGEBOX_KEY:$STORAGEBOX_SECRET" -H "content-type: application/json" \\
+      curl: `curl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" -H "content-type: application/json" \\
   -d '{"expiresIn":3600,"download":false}' \\
   ${apiUrl}/v1/files/PUBLIC_ID/signed-url`,
       sdk: `const { url, expiresAt } = await storagebox.files.signedUrl("PUBLIC_ID", {
@@ -90,7 +90,7 @@ files = response.json()["data"]["items"]`,
 url = response.json()["data"]["url"]`,
     },
     remove: {
-      curl: `curl -u "$STORAGEBOX_KEY:$STORAGEBOX_SECRET" -X DELETE ${apiUrl}/v1/files/PUBLIC_ID`,
+      curl: `curl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" -X DELETE ${apiUrl}/v1/files/PUBLIC_ID`,
       sdk: `await storagebox.files.delete("PUBLIC_ID");`,
       python: `requests.delete("${apiUrl}/v1/files/PUBLIC_ID", auth=auth)`,
     },

@@ -2,8 +2,10 @@ import bcrypt from 'bcryptjs';
 import status from 'http-status';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '@/config/config';
+import logger from '@/config/logger';
 import prisma from '@/config/prisma';
-import { AuthUser, UserRole } from '@/types/api';
+import { AccountStatus, AuthUser, UserRole } from '@/types/api';
+import { assertAccountUsable } from '@/utils/accountAccess';
 import ApiError from '@/utils/ApiError';
 import { randomSuffix, randomToken, sha256Hex } from '@/utils/crypto';
 import { ERROR_CODES } from '@/utils/errorCodes';
@@ -37,6 +39,11 @@ export interface Profile extends AuthUser {
 
 export interface AuthSession extends SessionTokens {
   user: Profile;
+}
+
+export interface RegistrationResult {
+  email: string;
+  status: AccountStatus;
 }
 
 const invalidCredentials = () =>
@@ -83,39 +90,78 @@ async function uniqueCloudName(seed: string): Promise<string> {
   }
 }
 
-export async function register(input: RegisterInput): Promise<ServiceResult<AuthSession>> {
+/** Sign-ups create a PENDING account; an administrator approves it and sets its storage quota. */
+export async function register(input: RegisterInput): Promise<ServiceResult<RegistrationResult>> {
   const email = input.email.toLowerCase();
   const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (exists) throw new ApiError(status.CONFLICT, 'An account with this email already exists', ERROR_CODES.EMAIL_ALREADY_EXISTS);
 
   const accountName = input.accountName?.trim() || input.name;
-  const [cloudName, passwordHash, userCount] = await Promise.all([
+  const [cloudName, passwordHash] = await Promise.all([
     uniqueCloudName(accountName),
     bcrypt.hash(input.password, PASSWORD_SALT_ROUNDS),
-    prisma.user.count(),
   ]);
 
-  const user = await prisma.user.create({
+  await prisma.user.create({
     data: {
       name: input.name,
       email,
       passwordHash,
-      role: userCount === 0 ? UserRole.ADMIN : UserRole.USER,
+      account: { create: { name: accountName, cloudName, quotaBytes: BigInt(config.limits.defaultQuotaBytes) } },
+    },
+  });
+  return {
+    message: 'Request received — an administrator will review your account shortly',
+    data: { email, status: AccountStatus.PENDING },
+  };
+}
+
+/** Creates (or restores) the platform administrator from ADMIN_EMAIL / ADMIN_PASSWORD. Idempotent. */
+export async function ensureAdmin(): Promise<void> {
+  const { email, password, name } = config.admin;
+  if (!email || !password) {
+    logger.warn('ADMIN_EMAIL / ADMIN_PASSWORD not set — no default administrator was created');
+    return;
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: existing.id }, data: { role: UserRole.ADMIN, isActive: true } }),
+      prisma.account.update({ where: { id: existing.accountId }, data: { status: AccountStatus.ACTIVE, isSuspended: false } }),
+    ]);
+    return;
+  }
+
+  await prisma.user.create({
+    data: {
+      name,
+      email,
+      role: UserRole.ADMIN,
+      passwordHash: await bcrypt.hash(password, PASSWORD_SALT_ROUNDS),
       account: {
-        create: { name: accountName, cloudName, quotaBytes: BigInt(config.limits.defaultQuotaBytes) },
+        create: {
+          name: 'StorageBox Admin',
+          cloudName: await uniqueCloudName('admin'),
+          status: AccountStatus.ACTIVE,
+          reviewedAt: new Date(),
+          quotaBytes: BigInt(config.limits.defaultQuotaBytes),
+        },
       },
     },
   });
-
-  const tokens = await issueTokens(user.id);
-  return { message: 'Welcome to StorageBox', data: { ...tokens, user: await loadProfile(user.id) } };
+  logger.info(`Created default administrator ${email}`);
 }
 
 export async function login(input: LoginInput): Promise<ServiceResult<AuthSession>> {
-  const user = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() } });
+  const user = await prisma.user.findUnique({
+    where: { email: input.email.toLowerCase() },
+    include: { account: { select: { status: true, isSuspended: true } } },
+  });
   if (!user?.isActive) throw invalidCredentials();
   const isMatch = await bcrypt.compare(input.password, user.passwordHash);
   if (!isMatch) throw invalidCredentials();
+  assertAccountUsable(user.account, user.role === UserRole.ADMIN);
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   const tokens = await issueTokens(user.id);

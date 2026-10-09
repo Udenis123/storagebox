@@ -94,16 +94,24 @@ export type UsageSummary = {
 
 export type ActivityEntry = { id: string; actor: string; action: string; target?: string; createdAt: string };
 
+export type AccountStatus = "PENDING" | "ACTIVE" | "REJECTED";
+
 export type AdminAccount = {
   id: string;
   name: string;
   cloudName: string;
+  status: AccountStatus;
   quotaBytes: number;
   storageBytes: number;
   fileCount: number;
   isSuspended: boolean;
   owner?: { name: string; email: string; role: UserRole };
+  reviewedAt?: string;
   createdAt: string;
 };
 
-export type PlatformStats = { accountCount: number; userCount: number; fileCount: number; storageBytes: number };
+export type UpdateAccountInput = { status?: Exclude<AccountStatus, "PENDING">; quotaGb?: number; isSuspended?: boolean };
+
+export type PlatformStats = { accountCount: number; pendingCount: number; userCount: number; fileCount: number; storageBytes: number };
+
+export type RegistrationResult = { email: string; status: AccountStatus };

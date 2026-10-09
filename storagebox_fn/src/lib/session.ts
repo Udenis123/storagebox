@@ -45,9 +45,14 @@ window.addEventListener("storage", (event) => {
   emit();
 });
 
+export const DASHBOARD_HOME = "/overview";
+export const ADMIN_HOME = "/admin";
+
+export const homePathFor = (user: Pick<Profile, "role"> | null): string => (user?.role === "ADMIN" ? ADMIN_HOME : DASHBOARD_HOME);
+
 /** Only same-origin paths are allowed as post-login destinations. */
-export function safeReturnPath(value: string | null | undefined): string {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+export function safeReturnPath(value: string | null | undefined): string | null {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : null;
 }
 
 export const loginPathFor = (returnTo: string): string => `/login?callbackUrl=${encodeURIComponent(returnTo)}`;

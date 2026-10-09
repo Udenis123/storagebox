@@ -31,7 +31,7 @@ export const apiKeyAuth = async (req: Request, _res: Response, next: NextFunctio
         ERROR_CODES.INVALID_API_KEY,
       );
     }
-    req.context = await authenticateApiKey(credentials.keyId, credentials.secret);
+    req.context = await authenticateApiKey(credentials.keyId, credentials.secret, req.header('x-cloud-name') || undefined);
     next();
   } catch (error) {
     next(error);

@@ -1,6 +1,6 @@
-import { ApiKeyScope, FileAccess, UserRole } from '@prisma/client';
+import { AccountStatus, ApiKeyScope, FileAccess, UserRole } from '@prisma/client';
 
-export { ApiKeyScope, FileAccess, UserRole };
+export { AccountStatus, ApiKeyScope, FileAccess, UserRole };
 
 export interface AuthUser {
   id: string;

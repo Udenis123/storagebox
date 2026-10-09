@@ -1,6 +1,8 @@
+import { randomInt } from 'crypto';
 import status from 'http-status';
 import prisma from '@/config/prisma';
 import { AccountContext, ApiKeyDto, ApiKeyScope } from '@/types/api';
+import { assertAccountUsable } from '@/utils/accountAccess';
 import ApiError from '@/utils/ApiError';
 import { randomToken, safeEqual, sha256Hex } from '@/utils/crypto';
 import { toApiKeyDto } from '@/utils/dto';
@@ -8,9 +10,21 @@ import { ERROR_CODES } from '@/utils/errorCodes';
 import { ServiceResult } from '@/utils/response';
 import { logActivity } from './activityService';
 
-const KEY_ID_PREFIX = 'sbk_';
-const SECRET_PREFIX = 'sbs_';
+const KEY_ID_DIGITS = 15;
+const SECRET_BYTES = 20;
 const LAST_USED_RESOLUTION_MS = 60_000;
+
+/** Cloudinary-style credentials: a 15-digit numeric key and a 27-character secret. */
+const generateKeyId = (): string =>
+  String(randomInt(1, 10)) + Array.from({ length: KEY_ID_DIGITS - 1 }, () => randomInt(0, 10)).join('');
+
+async function uniqueKeyId(): Promise<string> {
+  for (;;) {
+    const keyId = generateKeyId();
+    const taken = await prisma.apiKey.findUnique({ where: { keyId }, select: { id: true } });
+    if (!taken) return keyId;
+  }
+}
 
 export interface CreateApiKeyInput {
   name: string;
@@ -29,13 +43,13 @@ export async function listApiKeys(ctx: AccountContext): Promise<ServiceResult<Ap
 }
 
 export async function createApiKey(ctx: AccountContext, input: CreateApiKeyInput): Promise<ServiceResult<CreatedApiKey>> {
-  const secret = `${SECRET_PREFIX}${randomToken(32)}`;
+  const secret = randomToken(SECRET_BYTES);
   const key = await prisma.apiKey.create({
     data: {
       accountId: ctx.accountId,
       name: input.name,
       scope: input.scope,
-      keyId: `${KEY_ID_PREFIX}${randomToken(12)}`,
+      keyId: await uniqueKeyId(),
       secretHash: sha256Hex(secret),
     },
   });
@@ -53,15 +67,16 @@ export async function revokeApiKey(ctx: AccountContext, id: string): Promise<Ser
   return { message: 'API key revoked', data: toApiKeyDto(revoked) };
 }
 
-export async function authenticateApiKey(keyId: string, secret: string): Promise<AccountContext> {
+export async function authenticateApiKey(keyId: string, secret: string, cloudName?: string): Promise<AccountContext> {
   const key = await prisma.apiKey.findUnique({
     where: { keyId },
-    include: { account: { select: { cloudName: true, isSuspended: true } } },
+    include: { account: { select: { cloudName: true, status: true, isSuspended: true } } },
   });
   if (!key || key.revokedAt || !safeEqual(key.secretHash, sha256Hex(secret))) throw invalidKey();
-  if (key.account.isSuspended) {
-    throw new ApiError(status.FORBIDDEN, 'This account is suspended', ERROR_CODES.ACCOUNT_SUSPENDED);
+  if (cloudName && cloudName !== key.account.cloudName) {
+    throw new ApiError(status.UNAUTHORIZED, `This API key does not belong to cloud "${cloudName}"`, ERROR_CODES.CLOUD_NAME_MISMATCH);
   }
+  assertAccountUsable(key.account);
 
   const isStale = !key.lastUsedAt || Date.now() - key.lastUsedAt.getTime() > LAST_USED_RESOLUTION_MS;
   if (isStale) await prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } });

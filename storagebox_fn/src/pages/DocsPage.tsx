@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import { credentialsEnv } from "@/features/developer/credentials";
 import { buildSnippets, SNIPPET_LANGUAGES, type SnippetLanguage } from "@/features/developer/snippets";
 import { API_BASE_URL, API_DOCS_URL } from "@/lib/constants";
 
@@ -65,7 +66,7 @@ export default function DocsPage() {
             the username and the secret is the password — or with the <code className="font-mono">x-api-key</code> and{" "}
             <code className="font-mono">x-api-secret</code> headers. Keep secrets on your server, never in browser code.
           </p>
-          <CodeBlock code={`Authorization: Basic base64("sbk_…:sbs_…")\n\nBase URL: ${API_BASE_URL}/v1`} />
+          <CodeBlock code={`# .env\n${credentialsEnv({ cloudName })}\n\n# HTTP\nAuthorization: Basic base64("API_KEY:API_SECRET")\nx-cloud-name: ${cloudName}   # optional, rejects keys from another cloud\nBase URL: ${API_BASE_URL}/v1`} />
         </section>
 
         <div className="grid gap-6">

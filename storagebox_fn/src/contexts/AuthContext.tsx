@@ -3,14 +3,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as authApi from "@/features/auth/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { sessionStore } from "@/lib/session";
-import type { Profile } from "@/lib/types";
+import type { Profile, RegistrationResult } from "@/lib/types";
 
 type AuthContextValue = {
   user: Profile | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (input: authApi.LoginInput) => Promise<void>;
-  register: (input: authApi.RegisterInput) => Promise<void>;
+  login: (input: authApi.LoginInput) => Promise<Profile>;
+  register: (input: authApi.RegisterInput) => Promise<RegistrationResult>;
   logout: () => Promise<void>;
   setUser: (user: Profile) => void;
 };
@@ -32,12 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [freshProfile]);
 
   const login = useCallback(async (input: authApi.LoginInput) => {
-    sessionStore.set((await authApi.login(input)).data);
+    const { data } = await authApi.login(input);
+    sessionStore.set(data);
+    return data.user;
   }, []);
 
-  const register = useCallback(async (input: authApi.RegisterInput) => {
-    sessionStore.set((await authApi.register(input)).data);
-  }, []);
+  const register = useCallback(async (input: authApi.RegisterInput) => (await authApi.register(input)).data, []);
 
   const logout = useCallback(async () => {
     const refreshToken = sessionStore.get()?.refreshToken;

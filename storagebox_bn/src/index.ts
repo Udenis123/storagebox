@@ -4,11 +4,13 @@ import logger from '@/config/logger';
 import prisma from '@/config/prisma';
 import { connectValkey, disconnectValkey } from '@/config/valkey';
 import { ensureBucket } from '@/lib/storage';
+import { ensureAdmin } from '@/services/authService';
 
 async function start(): Promise<void> {
   await prisma.$connect();
   await connectValkey();
   await ensureBucket();
+  await ensureAdmin();
   createApp().listen(config.port, () => {
     logger.info(`StorageBox API listening on ${config.publicUrl} (docs at /docs)`);
   });

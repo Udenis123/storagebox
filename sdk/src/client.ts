@@ -16,14 +16,25 @@ import type {
   UsageSummary,
 } from "./types.js";
 
+export const DEFAULT_BASE_URL = "https://storagebox.urbinaryhub.com";
+
+/** Every option falls back to its `STORAGEBOX_*` environment variable when omitted. */
 export interface StorageBoxConfig {
-  /** API origin, e.g. `https://storage.example.com` (no `/v1`). */
-  baseUrl: string;
-  apiKey: string;
-  apiSecret: string;
+  /** API key. Env: `STORAGEBOX_API_KEY`. */
+  apiKey?: string;
+  /** API secret — keep it on the server. Env: `STORAGEBOX_API_SECRET`. */
+  apiSecret?: string;
+  /** Your cloud name; requests fail if the key belongs to another cloud. Env: `STORAGEBOX_CLOUD_NAME`. */
+  cloudName?: string;
+  /** API origin without `/v1`. Env: `STORAGEBOX_API_URL`. Defaults to the hosted StorageBox. */
+  baseUrl?: string;
   /** Custom fetch (tests, proxies). Defaults to the global fetch. */
   fetch?: typeof fetch;
 }
+
+type Environment = Record<string, string | undefined>;
+
+const readEnv = (): Environment => (globalThis as { process?: { env?: Environment } }).process?.env ?? {};
 
 type Envelope<T> = { status: "success" | "error"; message: string; data?: T; errorCode?: string };
 type QueryValue = string | number | boolean | undefined;
@@ -54,12 +65,19 @@ function uploadForm(options: UploadOptions): FormData {
 export class StorageBox {
   private readonly baseUrl: string;
   private readonly authorization: string;
+  private readonly cloudName?: string;
   private readonly fetcher: typeof fetch;
 
-  constructor(config: StorageBoxConfig) {
-    if (!config.apiKey || !config.apiSecret) throw new Error("StorageBox: apiKey and apiSecret are required");
-    this.baseUrl = config.baseUrl.replace(/\/+$/, "");
-    this.authorization = `Basic ${btoa(`${config.apiKey}:${config.apiSecret}`)}`;
+  constructor(config: StorageBoxConfig = {}) {
+    const env = readEnv();
+    const apiKey = config.apiKey ?? env.STORAGEBOX_API_KEY;
+    const apiSecret = config.apiSecret ?? env.STORAGEBOX_API_SECRET;
+    if (!apiKey || !apiSecret) {
+      throw new Error("StorageBox: pass apiKey and apiSecret, or set STORAGEBOX_API_KEY and STORAGEBOX_API_SECRET");
+    }
+    this.baseUrl = (config.baseUrl ?? env.STORAGEBOX_API_URL ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+    this.cloudName = config.cloudName ?? env.STORAGEBOX_CLOUD_NAME;
+    this.authorization = `Basic ${btoa(`${apiKey}:${apiSecret}`)}`;
     this.fetcher = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -67,7 +85,11 @@ export class StorageBox {
     const isForm = body instanceof FormData;
     const response = await this.fetcher(`${this.baseUrl}/v1${path}`, {
       method,
-      headers: { authorization: this.authorization, ...(body && !isForm ? { "content-type": "application/json" } : {}) },
+      headers: {
+        authorization: this.authorization,
+        ...(this.cloudName && { "x-cloud-name": this.cloudName }),
+        ...(body && !isForm && { "content-type": "application/json" }),
+      },
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
     const payload = (await response.json().catch(() => null)) as Envelope<T> | null;

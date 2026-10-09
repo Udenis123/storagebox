@@ -1,30 +1,54 @@
 {
-  "name": "@storagebox/sdk",
-  "version": "0.1.0",
-  "description": "TypeScript client for the StorageBox file storage and delivery API",
+  "name": "storagebox",
+  "version": "1.0.0",
+  "description": "Official Node.js and browser client for StorageBox — upload, organise, transform and share files with one link",
+  "keywords": [
+    "storagebox",
+    "file-storage",
+    "upload",
+    "cdn",
+    "image-transform",
+    "signed-url",
+    "s3",
+    "cloudinary-alternative"
+  ],
+  "homepage": "https://storagebox.urbinaryhub.com",
+  "author": "Denis Dideho <denisdideho@gmail.com>",
+  "license": "MIT",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "sideEffects": false,
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node -e \"require('fs').writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }))\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test \"test/**/*.test.mjs\""
+    "test": "npm run build && node --test \"test/**/*.test.mjs\" \"test/**/*.test.cjs\"",
+    "prepublishOnly": "npm test"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
-  },
-  "license": "MIT"
+  }
 }

@@ -105,6 +105,7 @@ export const paginationQuerySchema = Joi.object({
 });
 
 export const updateAccountSchema = Joi.object({
+  status: Joi.string().valid('ACTIVE', 'REJECTED'),
   quotaGb: Joi.number().min(0.1).max(100_000),
   isSuspended: Joi.boolean(),
 }).min(1);

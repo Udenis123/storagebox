@@ -31,6 +31,11 @@ export const config = {
     refreshTokenDays: Number(optional('REFRESH_TOKEN_DAYS', '30')),
   },
   signingSecret: required('SIGNING_SECRET'),
+  admin: {
+    email: optional('ADMIN_EMAIL').trim().toLowerCase(),
+    password: optional('ADMIN_PASSWORD'),
+    name: optional('ADMIN_NAME', 'StorageBox Admin'),
+  },
   s3: {
     endpoint: optional('S3_ENDPOINT', 'http://localhost:9200'),
     region: optional('S3_REGION', 'us-east-1'),

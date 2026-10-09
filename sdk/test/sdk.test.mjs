@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { test } from "node:test";
-import { StorageBox, StorageBoxError, deliveryUrl, transformation, verifyWebhook, withTransform } from "../dist/index.js";
+import { StorageBox, StorageBoxError, deliveryUrl, transformation, verifyWebhook, withTransform } from "../dist/esm/index.js";
 
 test("transformation builds a segment from options", () => {
   assert.equal(transformation({ width: 400, height: 300, crop: "fill", format: "webp" }), "w_400,h_300,c_fill,f_webp");
@@ -33,10 +33,35 @@ test("API errors surface as StorageBoxError", async () => {
   await assert.rejects(client.files.list(), (error) => error instanceof StorageBoxError && error.status === 401 && error.code === "E1006");
 });
 
-const { STORAGEBOX_URL, STORAGEBOX_KEY, STORAGEBOX_SECRET } = process.env;
+test("reads credentials from the environment and sends the cloud name", async (t) => {
+  t.after(() => {
+    for (const name of ["STORAGEBOX_API_KEY", "STORAGEBOX_API_SECRET", "STORAGEBOX_CLOUD_NAME"]) delete process.env[name];
+  });
+  Object.assign(process.env, { STORAGEBOX_API_KEY: "482917365028174", STORAGEBOX_API_SECRET: "s3cret", STORAGEBOX_CLOUD_NAME: "acme" });
+  let request;
+  const fakeFetch = async (url, init) => {
+    request = { url, headers: init.headers };
+    return new Response(JSON.stringify({ status: "success", message: "ok", data: { items: [], total: 0 } }));
+  };
+  await new StorageBox({ fetch: fakeFetch }).files.list();
+  assert.equal(request.url, "https://storagebox.urbinaryhub.com/v1/files");
+  assert.equal(request.headers.authorization, `Basic ${btoa("482917365028174:s3cret")}`);
+  assert.equal(request.headers["x-cloud-name"], "acme");
+});
 
-test("live: upload, list, sign, transform and delete", { skip: !STORAGEBOX_KEY && "set STORAGEBOX_URL/KEY/SECRET" }, async () => {
-  const client = new StorageBox({ baseUrl: STORAGEBOX_URL ?? "http://localhost:4200", apiKey: STORAGEBOX_KEY, apiSecret: STORAGEBOX_SECRET });
+test("missing credentials fail fast", () => {
+  assert.throws(() => new StorageBox(), /STORAGEBOX_API_KEY/);
+});
+
+const LIVE_KEY = process.env.LIVE_STORAGEBOX_API_KEY;
+
+test("live: upload, list, sign, transform and delete", { skip: !LIVE_KEY && "set LIVE_STORAGEBOX_API_URL/API_KEY/API_SECRET/CLOUD_NAME" }, async () => {
+  const client = new StorageBox({
+    baseUrl: process.env.LIVE_STORAGEBOX_API_URL ?? "http://localhost:4200",
+    apiKey: LIVE_KEY,
+    apiSecret: process.env.LIVE_STORAGEBOX_API_SECRET,
+    cloudName: process.env.LIVE_STORAGEBOX_CLOUD_NAME,
+  });
   const pdf = new TextEncoder().encode("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
   const file = await client.files.upload({ data: pdf, filename: "sdk-test.pdf", type: "application/pdf" }, { collection: "sdk-tests", tags: ["sdk"] });
   try {

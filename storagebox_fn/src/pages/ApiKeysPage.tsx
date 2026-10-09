@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, KeyRound, Plus } from "lucide-react";
+import { AlertTriangle, Cloud, KeyRound, Plus } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { CopyField } from "@/components/shared/CopyField";
+import { CodeBlock, CopyField } from "@/components/shared/CopyField";
 import { FormDialog } from "@/components/shared/FormDialog";
 import { FormField, INPUT_CLASS } from "@/components/shared/FormField";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -13,7 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from "@/contexts/AuthContext";
+import { credentialsEnv } from "@/features/developer/credentials";
 import { useApiKeys, useCreateApiKey, useRevokeApiKey } from "@/features/developer/hooks";
+import { API_BASE_URL, SDK_PACKAGE } from "@/lib/constants";
 import { timeAgo } from "@/lib/format";
 import type { ApiKey, ApiKeyScope, CreatedApiKey } from "@/lib/types";
 
@@ -52,7 +55,34 @@ function NewKeyDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpen
   );
 }
 
-function RevealKeyDialog({ apiKey, onClose }: { apiKey: CreatedApiKey | null; onClose: () => void }) {
+function CredentialsCard({ cloudName }: { cloudName: string }) {
+  return (
+    <section className="mb-6 grid gap-5 rounded-xl border bg-card p-4 sm:p-6 lg:grid-cols-[1fr_1.1fr]">
+      <div className="grid content-start gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Cloud className="size-5" />
+          </span>
+          <div className="grid">
+            <h2 className="text-lg font-semibold">Your credentials</h2>
+            <p className="text-sm text-muted-foreground">Everything your app needs to talk to StorageBox.</p>
+          </div>
+        </div>
+        <CopyField label="Cloud name" value={cloudName} />
+        <CopyField label="API base URL" value={API_BASE_URL} />
+      </div>
+      <div className="grid min-w-0 content-start gap-2">
+        <p className="text-sm font-medium">
+          Add to your <code className="font-mono">.env</code>, then <code className="font-mono">npm install {SDK_PACKAGE}</code>
+        </p>
+        <CodeBlock code={credentialsEnv({ cloudName })} />
+        <p className="text-xs text-muted-foreground">The API secret is shown only once, when you create a key.</p>
+      </div>
+    </section>
+  );
+}
+
+function RevealKeyDialog({ apiKey, cloudName, onClose }: { apiKey: CreatedApiKey | null; cloudName: string; onClose: () => void }) {
   return (
     <Dialog open={Boolean(apiKey)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-xl">
@@ -65,7 +95,10 @@ function RevealKeyDialog({ apiKey, onClose }: { apiKey: CreatedApiKey | null; on
           <div className="grid min-w-0 gap-4">
             <CopyField label="API key" value={apiKey.keyId} />
             <CopyField label="API secret" value={apiKey.secret} isSecret />
-            <CopyField label="Authorization header" value={`Basic ${btoa(`${apiKey.keyId}:${apiKey.secret}`)}`} isSecret />
+            <div className="grid min-w-0 gap-1.5">
+              <span className="text-sm font-medium">.env</span>
+              <CodeBlock code={credentialsEnv({ cloudName, apiKey: apiKey.keyId, apiSecret: apiKey.secret })} />
+            </div>
           </div>
         )}
         <DialogFooter>
@@ -79,6 +112,8 @@ function RevealKeyDialog({ apiKey, onClose }: { apiKey: CreatedApiKey | null; on
 }
 
 export default function ApiKeysPage() {
+  const { user } = useAuth();
+  const cloudName = user?.account.cloudName ?? "";
   const { data: keys, isLoading, error } = useApiKeys();
   const [isCreating, setIsCreating] = useState(false);
   const [created, setCreated] = useState<CreatedApiKey | null>(null);
@@ -103,6 +138,8 @@ export default function ApiKeysPage() {
           </Button>
         }
       />
+
+      <CredentialsCard cloudName={cloudName} />
 
       {!keys?.length ? (
         <EmptyState
@@ -149,7 +186,7 @@ export default function ApiKeysPage() {
       )}
 
       <NewKeyDialog open={isCreating} onOpenChange={setIsCreating} onCreated={setCreated} />
-      <RevealKeyDialog apiKey={created} onClose={() => setCreated(null)} />
+      <RevealKeyDialog apiKey={created} cloudName={cloudName} onClose={() => setCreated(null)} />
       <ConfirmDialog
         open={Boolean(toRevoke)}
         onOpenChange={(open) => !open && setToRevoke(null)}

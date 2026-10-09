@@ -1,28 +1,34 @@
-# @storagebox/sdk
+# storagebox
 
-TypeScript client for the StorageBox API. Zero dependencies — works in Node 18+, Bun, Deno and edge runtimes.
+Official client for [StorageBox](https://storagebox.urbinaryhub.com) — store files, organise them in collections, transform images on the fly and share them with permanent or expiring links. Zero dependencies; works in Node 18+, Bun, Deno and edge runtimes, with both `import` and `require`.
 
 > Use it on your **server**. The API secret must never be shipped to a browser.
 
 ## Install
 
 ```bash
-npm install @storagebox/sdk
-# or, from this repo:
-npm install ../sdk
+npm install storagebox
+```
+
+## Configure
+
+[Request an account](https://storagebox.urbinaryhub.com/register). Once an administrator approves it, open **API Keys** in the dashboard, create a key and copy the three values into your `.env`:
+
+```bash
+STORAGEBOX_CLOUD_NAME=acme
+STORAGEBOX_API_KEY=482917365028174
+STORAGEBOX_API_SECRET=your_api_secret
+# Only for a self-hosted StorageBox:
+# STORAGEBOX_API_URL=http://localhost:4200
 ```
 
 ## Quick start
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { StorageBox } from "@storagebox/sdk";
+import { StorageBox } from "storagebox";
 
-const storagebox = new StorageBox({
-  baseUrl: process.env.STORAGEBOX_URL!, // e.g. http://localhost:4200
-  apiKey: process.env.STORAGEBOX_KEY!, // sbk_…
-  apiSecret: process.env.STORAGEBOX_SECRET!, // sbs_…
-});
+const storagebox = new StorageBox(); // reads STORAGEBOX_* from the environment
 
 const file = await storagebox.files.upload(
   { data: await readFile("contract.pdf"), filename: "contract.pdf" },
@@ -31,6 +37,21 @@ const file = await storagebox.files.upload(
 
 console.log(file.url); // permanent link (public files)
 ```
+
+Or pass everything explicitly — each option overrides its environment variable:
+
+```ts
+const storagebox = new StorageBox({
+  cloudName: "acme",
+  apiKey: "482917365028174",
+  apiSecret: process.env.MY_SECRET,
+  baseUrl: "https://storagebox.urbinaryhub.com", // default
+});
+```
+
+CommonJS works too: `const { StorageBox } = require("storagebox");`
+
+When `cloudName` is set, every request carries it and StorageBox rejects keys that belong to a different cloud (`E2010`).
 
 ## Files
 
@@ -63,7 +84,7 @@ const usage = await storagebox.usage(); // storage, quota, daily uploads/deliver
 
 ```ts
 storagebox.url(file, { width: 400, height: 400, crop: "fill", format: "webp" });
-// → http://localhost:4200/f/acme/w_400,h_400,c_fill,f_webp/photo_ab12cd.jpg
+// → https://storagebox.urbinaryhub.com/f/acme/w_400,h_400,c_fill,f_webp/photo_ab12cd.jpg
 
 await storagebox.files.signedUrl(privateFile.publicId, { transform: "w_800,f_avif", expiresIn: 600 });
 ```
@@ -74,7 +95,7 @@ Options: `width`, `height`, `crop` (`fill` | `fit` | `limit`), `quality` (1–10
 
 ```ts
 import express from "express";
-import { verifyWebhook } from "@storagebox/sdk";
+import { verifyWebhook } from "storagebox";
 
 app.post("/hooks/storagebox", express.text({ type: "*/*" }), async (req, res) => {
   const payload = await verifyWebhook(req.body, req.header("x-storagebox-signature"), process.env.STORAGEBOX_WEBHOOK_SECRET!);
@@ -102,6 +123,16 @@ try {
 
 ```bash
 npm install
-npm test                       # unit tests
-STORAGEBOX_URL=http://localhost:4200 STORAGEBOX_KEY=sbk_… STORAGEBOX_SECRET=sbs_… npm test   # + live test
+npm test   # unit tests (ESM + CommonJS)
+
+# + live test against a running API
+LIVE_STORAGEBOX_API_URL=http://localhost:4200 LIVE_STORAGEBOX_CLOUD_NAME=acme \
+LIVE_STORAGEBOX_API_KEY=482917365028174 LIVE_STORAGEBOX_API_SECRET=… npm test
+```
+
+## Publishing
+
+```bash
+npm login
+npm publish   # runs the tests first (prepublishOnly)
 ```

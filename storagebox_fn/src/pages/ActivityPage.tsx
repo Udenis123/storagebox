@@ -18,6 +18,8 @@ const ACTION_TEXT: Record<string, string> = {
   "webhook.created": "added webhook",
   "webhook.deleted": "removed webhook",
   "admin.account_updated": "updated account",
+  "admin.account_approved": "approved account",
+  "admin.account_rejected": "rejected account",
 };
 
 const iconFor = (action: string) => {

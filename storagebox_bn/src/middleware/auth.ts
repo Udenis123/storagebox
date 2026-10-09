@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '@/config/config';
 import prisma from '@/config/prisma';
 import { UserRole } from '@/types/api';
+import { assertAccountUsable } from '@/utils/accountAccess';
 import ApiError from '@/utils/ApiError';
 import { ERROR_CODES } from '@/utils/errorCodes';
 
@@ -34,16 +35,13 @@ const auth =
 
       const user = await prisma.user.findUnique({
         where: { id: payload.sub },
-        include: { account: { select: { cloudName: true, isSuspended: true } } },
+        include: { account: { select: { cloudName: true, status: true, isSuspended: true } } },
       });
       if (!user?.isActive) throw new ApiError(status.UNAUTHORIZED, 'Please sign in', ERROR_CODES.UNAUTHORIZED);
       if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
         throw new ApiError(status.FORBIDDEN, 'You do not have access to this resource', ERROR_CODES.FORBIDDEN);
       }
-      const isAdmin = user.role === UserRole.ADMIN;
-      if (user.account.isSuspended && !isAdmin) {
-        throw new ApiError(status.FORBIDDEN, 'This account is suspended', ERROR_CODES.ACCOUNT_SUSPENDED);
-      }
+      assertAccountUsable(user.account, user.role === UserRole.ADMIN);
 
       req.authUser = { id: user.id, accountId: user.accountId, name: user.name, email: user.email, role: user.role };
       req.context = {

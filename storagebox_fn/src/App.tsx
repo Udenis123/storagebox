@@ -7,6 +7,7 @@ import { PageSkeleton } from "@/components/shared/States";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ApiRequestError } from "@/lib/api";
+import HomePage from "@/pages/HomePage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 
@@ -36,11 +37,12 @@ export default function App() {
         <BrowserRouter>
           <Suspense fallback={<PageSkeleton />}>
             <Routes>
+              <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route element={<RequireAuth />}>
                 <Route element={<AppLayout />}>
-                  <Route index element={<OverviewPage />} />
+                  <Route path="/overview" element={<OverviewPage />} />
                   <Route path="/library" element={<LibraryPage />} />
                   <Route path="/keys" element={<ApiKeysPage />} />
                   <Route path="/webhooks" element={<WebhooksPage />} />

@@ -13,7 +13,7 @@ Files are stored in [RustFS](https://rustfs.com), an S3-compatible object store.
 | --- | --- | --- |
 | `storagebox_bn/` | REST API, delivery and signed links | Express, TypeScript, Prisma, PostgreSQL, Valkey, sharp |
 | `storagebox_fn/` | Dashboard | Vite, React 19, Tailwind, shadcn/ui, TanStack Query |
-| `sdk/` | `@storagebox/sdk` client | TypeScript, no dependencies |
+| `sdk/` | `storagebox` npm package | TypeScript, no dependencies |
 | `docs/specs/` | Design document | |
 
 ## Run it locally
@@ -26,7 +26,7 @@ docker compose up -d
 
 # 2. API on http://localhost:4200 (Swagger at /docs)
 cd storagebox_bn
-cp example.env .env          # then set JWT_SECRET and SIGNING_SECRET to long random strings
+cp example.env .env          # set JWT_SECRET, SIGNING_SECRET and ADMIN_EMAIL / ADMIN_PASSWORD
 npm install
 npx prisma migrate deploy
 npm run dev
@@ -38,7 +38,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3200 and create an account. **The first account registered becomes the platform admin.**
+Open http://localhost:3200 and sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`. The API creates (or promotes) that admin on every start.
+
+Everyone else uses **Request an account**. New accounts stay pending until an admin approves them on the **Admin** page and chooses how much storage they get. Pending and rejected accounts cannot sign in or use API keys.
 
 ## How it works
 
@@ -47,23 +49,25 @@ Open http://localhost:3200 and create an account. **The first account registered
 - **Access.** `PUBLIC` files have permanent links that are cached for a day. `PRIVATE` files can only be opened with a signed link that expires after 1 minute to 7 days. Signing uses HMAC-SHA256 with `SIGNING_SECRET`.
 - **Transformations.** Add a segment such as `w_400,h_300,c_fill,f_webp` to the URL of any image. Each variant is generated once with sharp and then cached in RustFS.
 - **Previews.** The dashboard previews images, PDFs, Word (.docx) files, video, audio and text.
-- **Developer API (`/v1`).** Authenticate with HTTP Basic auth using the API key and secret. Keys can be `READ` or `READ_WRITE` and are rate limited per minute.
+- **Developer API (`/v1`).** Like Cloudinary, each account has a cloud name, a 15-digit API key and an API secret. Authenticate with HTTP Basic auth (key:secret); the optional `x-cloud-name` header must match the key's account. Keys can be `READ` or `READ_WRITE` and are rate limited per minute.
 - **Webhooks** fire on `file.uploaded` and `file.deleted`. Each one is signed in the `x-storagebox-signature` header.
 - **Usage and activity.** Usage tracks storage, uploads, deliveries and transforms per day. The activity log records who did what.
-- **Admin.** Admins see all accounts and can change storage quotas or suspend an account.
+- **Admin.** Admins approve or reject access requests, set each account's storage quota and can suspend accounts. Rejecting an account also revokes its sessions and API keys.
 
 ## Developer quick start
 
 ```bash
-curl -u "$STORAGEBOX_KEY:$STORAGEBOX_SECRET" \
+curl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" \
   -F "file=@invoice.pdf" -F "collection=invoices/2026" \
   http://localhost:4200/v1/files
 ```
 
 ```ts
-import { StorageBox } from "@storagebox/sdk";
+// npm install storagebox
+// .env: STORAGEBOX_CLOUD_NAME, STORAGEBOX_API_KEY, STORAGEBOX_API_SECRET (+ STORAGEBOX_API_URL when self-hosted)
+import { StorageBox } from "storagebox";
 
-const storagebox = new StorageBox({ baseUrl: "http://localhost:4200", apiKey: "sbk_…", apiSecret: "sbs_…" });
+const storagebox = new StorageBox();
 const file = await storagebox.files.upload(myFile, { collection: "invoices/2026" });
 const { url } = await storagebox.files.signedUrl(file.publicId, { expiresIn: 3600 });
 ```
@@ -75,7 +79,7 @@ There are more examples in the dashboard (**API Docs**), in `sdk/README.md` and 
 ```bash
 cd storagebox_bn && npm test            # unit tests (signing, transforms, file types)
 cd storagebox_bn && ./scripts/smoke.sh  # end-to-end against the running API and RustFS
-cd sdk && npm test                      # SDK unit tests (+ live test when STORAGEBOX_KEY/SECRET are set)
+cd sdk && npm test                      # SDK unit tests (+ live test when LIVE_STORAGEBOX_* are set)
 ```
 
 ## Production notes

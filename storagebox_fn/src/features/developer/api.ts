@@ -2,6 +2,7 @@ import { apiFetch, jsonBody, queryString } from "@/lib/api";
 import type {
   ActivityEntry,
   AdminAccount,
+  UpdateAccountInput,
   ApiKey,
   ApiKeyScope,
   CreatedApiKey,
@@ -34,5 +35,5 @@ export const listActivity = (page: number, pageSize: number) =>
 
 export const getPlatformStats = () => apiFetch<PlatformStats>("/admin/stats");
 export const listAccounts = () => apiFetch<AdminAccount[]>("/admin/accounts");
-export const updateAccount = (id: string, input: { quotaGb?: number; isSuspended?: boolean }) =>
+export const updateAccount = (id: string, input: UpdateAccountInput) =>
   apiFetch<{ id: string }>(`/admin/accounts/${id}`, { method: "PATCH", body: jsonBody(input) });

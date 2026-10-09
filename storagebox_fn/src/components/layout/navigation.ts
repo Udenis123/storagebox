@@ -6,7 +6,7 @@ export const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "Storage",
     items: [
-      { to: "/", label: "Overview", icon: LayoutDashboard },
+      { to: "/overview", label: "Overview", icon: LayoutDashboard },
       { to: "/library", label: "Media Library", icon: FolderOpen },
     ],
   },

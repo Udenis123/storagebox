@@ -9,7 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ActivityChart, StorageByKindChart } from "@/features/developer/UsageCharts";
 import { RecentFiles } from "@/features/files/RecentFiles";
 import { useUsage } from "@/features/developer/hooks";
-import { API_BASE_URL } from "@/lib/constants";
+import { credentialsEnv } from "@/features/developer/credentials";
+import { SDK_PACKAGE } from "@/lib/constants";
 import { formatBytes, percentOf } from "@/lib/format";
 
 export default function OverviewPage() {
@@ -21,9 +22,17 @@ export default function OverviewPage() {
 
   const storagePercent = percentOf(usage.storageBytes, usage.quotaBytes);
   const deliveries = usage.daily.reduce((sum, day) => sum + day.deliveries, 0);
-  const curlSnippet = `curl -u API_KEY:API_SECRET \\
-  -F "file=@invoice.pdf" -F "collection=invoices" \\
-  ${API_BASE_URL}/v1/files`;
+  const sdkSnippet = `npm install ${SDK_PACKAGE}
+
+# .env
+${credentialsEnv({ cloudName: usage.cloudName })}
+
+// app.ts
+import { StorageBox } from "${SDK_PACKAGE}";
+
+const storagebox = new StorageBox();
+const file = await storagebox.files.upload(invoice, { collection: "invoices" });
+console.log(file.url);`;
 
   return (
     <>
@@ -81,9 +90,9 @@ export default function OverviewPage() {
             Upload from your code
           </SectionTitle>
           <p className="text-base text-muted-foreground">
-            Create an API key, then upload with one request. The response contains the file's link.
+            Install the package, add your credentials from <Link to="/keys" className="text-primary hover:underline">API Keys</Link>, then upload in one line.
           </p>
-          <CodeBlock code={curlSnippet} />
+          <CodeBlock code={sdkSnippet} />
         </section>
       </div>
     </>

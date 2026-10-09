@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Ban, Building2, CheckCircle2, Files, HardDrive, Users } from "lucide-react";
+import { Ban, Building2, CheckCircle2, Clock, Files, HardDrive, Inbox, Mail, UserCheck, XCircle } from "lucide-react";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { FormDialog } from "@/components/shared/FormDialog";
 import { FormField, INPUT_CLASS } from "@/components/shared/FormField";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -13,30 +14,116 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAdminAccounts, usePlatformStats, useUpdateAccount } from "@/features/developer/hooks";
 import { formatBytes, formatDate, percentOf } from "@/lib/format";
 import type { AdminAccount } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const BYTES_PER_GB = 1024 ** 3;
+const DEFAULT_QUOTA_GB = 5;
+const QUOTA_PRESETS_GB = [1, 5, 10, 25, 50, 100];
 
-function QuotaDialog({ account, onClose }: { account: AdminAccount | null; onClose: () => void }) {
-  const [quotaGb, setQuotaGb] = useState("");
+type StorageDialogState = { account: AdminAccount; mode: "approve" | "quota" } | null;
+
+const toGb = (bytes: number): string => String(+(bytes / BYTES_PER_GB).toFixed(2));
+
+function StorageDialog({ state, onClose }: { state: NonNullable<StorageDialogState>; onClose: () => void }) {
+  const { account, mode } = state;
+  const isApproval = mode === "approve";
+  const [quotaGb, setQuotaGb] = useState(isApproval ? String(DEFAULT_QUOTA_GB) : toGb(account.quotaBytes));
   const updateAccount = useUpdateAccount();
   const value = Number(quotaGb);
+
   return (
     <FormDialog
-      open={Boolean(account)}
-      onOpenChange={(open) => {
-        if (open && account) setQuotaGb(String(+(account.quotaBytes / BYTES_PER_GB).toFixed(2)));
-        if (!open) onClose();
-      }}
-      title={`Storage quota — ${account?.name ?? ""}`}
-      submitLabel="Save quota"
+      open
+      onOpenChange={(open) => !open && onClose()}
+      icon={isApproval ? <UserCheck /> : <HardDrive />}
+      title={isApproval ? `Approve ${account.owner?.name ?? account.name}` : `Storage for ${account.name}`}
+      description={isApproval ? "Choose how much storage this account gets. You can change it later." : `Currently using ${formatBytes(account.storageBytes)}.`}
+      submitLabel={isApproval ? "Approve account" : "Save storage"}
       isPending={updateAccount.isPending}
       canSubmit={value >= 0.1}
-      onSubmit={() => account && updateAccount.mutate({ id: account.id, quotaGb: value }, { onSuccess: onClose })}
+      onSubmit={() =>
+        updateAccount.mutate({ id: account.id, quotaGb: value, ...(isApproval && { status: "ACTIVE" as const }) }, { onSuccess: onClose })
+      }
     >
-      <FormField label="Quota (GB)" htmlFor="quota-gb" hint={account ? `Currently using ${formatBytes(account.storageBytes)}` : undefined}>
-        <Input id="quota-gb" inputMode="decimal" value={quotaGb} onChange={(event) => setQuotaGb(event.target.value.replace(/[^\d.]/g, ""))} className={INPUT_CLASS} />
+      <FormField label="Storage (GB)" htmlFor="quota-gb">
+        <Input
+          id="quota-gb"
+          inputMode="decimal"
+          autoFocus
+          value={quotaGb}
+          onChange={(event) => setQuotaGb(event.target.value.replace(/[^\d.]/g, ""))}
+          className={INPUT_CLASS}
+        />
       </FormField>
+      <div className="flex flex-wrap gap-2">
+        {QUOTA_PRESETS_GB.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            onClick={() => setQuotaGb(String(preset))}
+            className={cn(
+              "h-9 rounded-full border px-4 text-sm font-medium transition-colors",
+              value === preset ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
+            )}
+          >
+            {preset} GB
+          </button>
+        ))}
+      </div>
     </FormDialog>
+  );
+}
+
+function StatusBadge({ account }: { account: AdminAccount }) {
+  if (account.status === "PENDING") return <Badge className="bg-tone-warning-bg text-tone-warning">Pending</Badge>;
+  if (account.status === "REJECTED") return <Badge variant="destructive">Rejected</Badge>;
+  if (account.isSuspended) return <Badge variant="destructive">Suspended</Badge>;
+  return <Badge className="bg-tone-success-bg text-tone-success">Active</Badge>;
+}
+
+type RequestActions = { onApprove: (account: AdminAccount) => void; onReject: (account: AdminAccount) => void };
+
+function AccessRequests({ requests, onApprove, onReject }: { requests: AdminAccount[] } & RequestActions) {
+  return (
+    <section className="mt-6 grid gap-3 rounded-xl border bg-card p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 items-center justify-center rounded-lg bg-tone-warning-bg text-tone-warning">
+          <Inbox className="size-5" />
+        </span>
+        <div className="grid">
+          <h2 className="text-lg font-semibold">Access requests</h2>
+          <p className="text-sm text-muted-foreground">
+            {requests.length ? `${requests.length} waiting for your review` : "No one is waiting — you're all caught up."}
+          </p>
+        </div>
+      </div>
+      {requests.length > 0 && (
+        <ul className="grid gap-2">
+          {requests.map((account) => (
+            <li key={account.id} className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid min-w-0 gap-0.5">
+                <span className="truncate text-base font-semibold">{account.owner?.name ?? account.name}</span>
+                <span className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                  <Mail className="size-3.5 shrink-0" />
+                  <span className="truncate">{account.owner?.email}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Building2 className="size-3.5" /> {account.name} · <Clock className="size-3.5" /> {formatDate(account.createdAt)}
+                </span>
+              </div>
+              <span className="flex shrink-0 gap-2">
+                <Button variant="outline" onClick={() => onReject(account)}>
+                  <XCircle /> Reject
+                </Button>
+                <Button onClick={() => onApprove(account)}>
+                  <CheckCircle2 /> Approve
+                </Button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -45,24 +132,32 @@ export default function AdminPage() {
   const stats = usePlatformStats();
   const accounts = useAdminAccounts();
   const updateAccount = useUpdateAccount();
-  const [editing, setEditing] = useState<AdminAccount | null>(null);
+  const [storageDialog, setStorageDialog] = useState<StorageDialogState>(null);
+  const [rejecting, setRejecting] = useState<AdminAccount | null>(null);
 
   if (stats.isLoading || accounts.isLoading) return <PageSkeleton />;
   if (stats.error || accounts.error) return <ErrorDisplay error={stats.error ?? accounts.error} />;
 
+  const requests = accounts.data?.filter((account) => account.status === "PENDING") ?? [];
+  const reviewed = accounts.data?.filter((account) => account.status !== "PENDING") ?? [];
+  const approve = (account: AdminAccount) => setStorageDialog({ account, mode: "approve" });
+
   return (
     <>
-      <PageHeader title="Admin" description="Platform-wide accounts, storage and quotas." />
+      <PageHeader title="Admin" description="Review access requests and decide how much storage each account gets." />
       {stats.data && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Accounts" value={stats.data.accountCount} icon={Building2} />
-          <StatCard title="Users" value={stats.data.userCount} icon={Users} tone="emerald" />
-          <StatCard title="Files" value={stats.data.fileCount.toLocaleString()} icon={Files} tone="amber" />
+          <StatCard title="Pending requests" value={stats.data.pendingCount} icon={Inbox} tone="amber" />
+          <StatCard title="Accounts" value={stats.data.accountCount} icon={Building2} hint={`${stats.data.userCount} users`} />
+          <StatCard title="Files" value={stats.data.fileCount.toLocaleString()} icon={Files} tone="emerald" />
           <StatCard title="Total storage" value={formatBytes(stats.data.storageBytes)} icon={HardDrive} tone="slate" />
         </div>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-xl border bg-card">
+      <AccessRequests requests={requests} onApprove={approve} onReject={setRejecting} />
+
+      <h2 className="mt-8 mb-3 text-lg font-semibold">Accounts</h2>
+      <div className="overflow-x-auto rounded-xl border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -76,8 +171,9 @@ export default function AdminPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {accounts.data?.map((account) => {
+            {reviewed.map((account) => {
               const isOwn = account.id === user?.accountId;
+              const isRejected = account.status === "REJECTED";
               return (
                 <TableRow key={account.id}>
                   <TableCell>
@@ -102,13 +198,21 @@ export default function AdminPage() {
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">{account.fileCount}</TableCell>
                   <TableCell className="hidden text-muted-foreground lg:table-cell">{formatDate(account.createdAt)}</TableCell>
-                  <TableCell>{account.isSuspended ? <Badge variant="destructive">Suspended</Badge> : <Badge variant="secondary">Active</Badge>}</TableCell>
+                  <TableCell>
+                    <StatusBadge account={account} />
+                  </TableCell>
                   <TableCell>
                     <span className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setEditing(account)}>
-                        Quota
-                      </Button>
-                      {!isOwn && (
+                      {isRejected ? (
+                        <Button variant="outline" size="sm" onClick={() => approve(account)}>
+                          <CheckCircle2 /> Approve
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => setStorageDialog({ account, mode: "quota" })}>
+                          <HardDrive /> Storage
+                        </Button>
+                      )}
+                      {!isOwn && !isRejected && (
                         <Button
                           variant={account.isSuspended ? "outline" : "destructive"}
                           size="sm"
@@ -127,7 +231,18 @@ export default function AdminPage() {
           </TableBody>
         </Table>
       </div>
-      <QuotaDialog account={editing} onClose={() => setEditing(null)} />
+
+      {storageDialog && <StorageDialog key={storageDialog.account.id} state={storageDialog} onClose={() => setStorageDialog(null)} />}
+      <ConfirmDialog
+        open={Boolean(rejecting)}
+        onOpenChange={(open) => !open && setRejecting(null)}
+        title={`Reject ${rejecting?.owner?.name ?? rejecting?.name ?? ""}?`}
+        description="They won't be able to sign in. You can still approve the account later from the accounts table."
+        confirmLabel="Reject request"
+        isDestructive
+        isPending={updateAccount.isPending}
+        onConfirm={() => rejecting && updateAccount.mutate({ id: rejecting.id, status: "REJECTED" }, { onSuccess: () => setRejecting(null) })}
+      />
     </>
   );
 }

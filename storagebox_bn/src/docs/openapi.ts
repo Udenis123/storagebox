@@ -57,7 +57,7 @@ export const openApiDocument = {
       'Store documents, images and any file, then deliver them with permanent public links or signed expiring links.',
       '',
       '**Authentication:** create an API key in the dashboard, then send `Authorization: Basic base64(api_key:api_secret)`',
-      '(or the `x-api-key` and `x-api-secret` headers).',
+      '(or the `x-api-key` and `x-api-secret` headers). Optionally send `x-cloud-name` to make sure the key belongs to that cloud.',
       '',
       '**Delivery URLs:** `GET /f/{cloudName}/{publicId}.{ext}` — add an image transform segment such as',
       '`/f/{cloudName}/w_400,h_300,c_fill,q_80,f_webp/{publicId}.jpg`. Private files need `?expires=&sig=` from the signed-url endpoint.',
