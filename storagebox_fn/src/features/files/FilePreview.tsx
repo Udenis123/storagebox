@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { downloadUrl, previewKindOf } from "@/lib/files";
+import { downloadUrl, embeddedViewerUrl, previewKindOf } from "@/lib/files";
 import type { StoredFile } from "@/lib/types";
 import { FileKindIcon } from "./FileThumb";
 import { useViewUrl } from "./hooks";
@@ -103,6 +103,9 @@ export function FilePreview({ file, isFill = false }: { file: StoredFile; isFill
       return <iframe src={url} title={file.originalName} className={frame} />;
     case "docx":
       return <DocxPreview file={file} url={url} frame={frame} />;
+    case "sheet":
+    case "office":
+      return <iframe src={embeddedViewerUrl(url)} title={file.originalName} className={`${frame} bg-white`} />;
     case "video":
       return <video src={url} controls className={isFill ? "h-full w-full rounded-lg bg-black" : "max-h-[65vh] w-full rounded-lg bg-black"} />;
     case "audio":

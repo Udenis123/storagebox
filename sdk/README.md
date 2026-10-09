@@ -69,13 +69,19 @@ When `cloudName` is set, every request carries it and StorageBox rejects keys th
 
 Upload options: `collection` (path, created on demand), `collectionId`, `access` (`PUBLIC` | `PRIVATE`), `publicId`, `tags`.
 
+A file's link is `/f/<cloud>/<publicId>.<ext>` and does not include its collection, so renaming or moving collections never breaks links you have already shared.
+
 ## Collections and usage
 
 ```ts
 const collections = await storagebox.collections.list();
-const invoices = await storagebox.collections.create({ name: "invoices", access: "PRIVATE" });
-await storagebox.collections.update(invoices.id, { name: "billing" });
-await storagebox.collections.delete(invoices.id, { force: true }); // also deletes its files
+await storagebox.collections.create({ name: "invoices", access: "PRIVATE" });
+await storagebox.collections.create({ name: "2026", parent: "invoices" }); // invoices/2026
+
+// Refer to a collection by its path or its id
+await storagebox.collections.rename("invoices", "billing"); // billing/2026 moves with it
+await storagebox.collections.update("billing", { access: "PUBLIC" });
+await storagebox.collections.delete("billing/2026", { force: true }); // also deletes its files
 
 const usage = await storagebox.usage(); // storage, quota, daily uploads/deliveries
 ```

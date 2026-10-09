@@ -144,13 +144,17 @@ export class StorageBox {
       }),
   };
 
+  /** Every `ref` is a collection id or its path, e.g. `"invoices/2026"`. Renaming never changes file links. */
   readonly collections = {
     list: (): Promise<Collection[]> => this.request("GET", "/collections"),
+    /** `{ name: "2026", parent: "invoices" }` creates `invoices/2026`. */
     create: (input: CreateCollectionInput): Promise<Collection> => this.request("POST", "/collections", input),
-    update: (id: string, input: UpdateCollectionInput): Promise<Collection> => this.request("PATCH", `/collections/${id}`, input),
+    update: (ref: string, input: UpdateCollectionInput): Promise<Collection> =>
+      this.request("PATCH", `/collections/${encodeURIComponent(ref)}`, input),
+    rename: (ref: string, name: string): Promise<Collection> => this.collections.update(ref, { name }),
     /** `force` also deletes every file and sub-collection inside. */
-    delete: (id: string, options: { force?: boolean } = {}): Promise<void> =>
-      this.request("DELETE", `/collections/${id}${queryString({ force: options.force })}`),
+    delete: (ref: string, options: { force?: boolean } = {}): Promise<void> =>
+      this.request("DELETE", `/collections/${encodeURIComponent(ref)}${queryString({ force: options.force })}`),
   };
 
   usage = (): Promise<UsageSummary> => this.request("GET", "/usage");

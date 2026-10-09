@@ -46,6 +46,8 @@ export interface ViewerPage {
   downloadPath: string;
   /** Absolute raw URL when the API is publicly reachable — required by Office Online. */
   publicRawUrl?: string;
+  /** Shown inside another app (the dashboard), which already has its own name and download controls. */
+  isEmbedded?: boolean;
 }
 
 const escapeHtml = (value: string): string =>
@@ -67,7 +69,8 @@ main{flex:1;min-height:0;overflow:auto}
 .tabs{display:flex;gap:4px;padding:10px 20px 0;background:#fff;border-bottom:1px solid #e2e8f0;overflow-x:auto}
 .tab{border:0;background:none;padding:8px 14px;border-radius:8px 8px 0 0;font:inherit;font-size:14px;color:#64748b;cursor:pointer}.tab[aria-selected=true]{background:#eef2ff;color:#3730a3;font-weight:600}
 .sheet{padding:20px;overflow:auto}.sheet table{border-collapse:collapse;background:#fff;font-size:14px}
-.sheet td{border:1px solid #e2e8f0;padding:6px 10px;white-space:nowrap}.sheet tr:first-child td{background:#f8fafc;font-weight:600}
+.sheet td{border:1px solid #e2e8f0;padding:7px 12px;white-space:nowrap}.sheet tr:first-child td{background:#f8fafc;font-weight:600;position:sticky;top:0}
+.sheet tr:nth-child(even) td{background:#fcfdfe}.sheet tr:hover td{background:#eef2ff}
 pre{margin:24px auto;max-width:960px;padding:24px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;white-space:pre-wrap;word-break:break-word;font:14px/1.65 "JetBrains Mono",ui-monospace,monospace}
 iframe{border:0;width:100%;height:100%;background:#fff}
 `;
@@ -81,12 +84,15 @@ export function renderViewerPage(page: ViewerPage): { html: string; csp: string 
   );
   const scripts = SCRIPTS_BY_KIND[page.kind].map((name) => `<script src="/f/${VIEWER_ASSET_PREFIX}/${name}"></script>`).join('');
   const name = escapeHtml(page.fileName);
+  const header = page.isEmbedded
+    ? ''
+    : `<header><span class="brand">Storage<b>Box</b></span>
+<div class="meta"><span class="name">${name}</span><span class="sub">${escapeHtml(page.sizeLabel)}</span></div>
+<a class="btn" href="${escapeHtml(page.downloadPath)}">Download</a></header>`;
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>${name} · StorageBox</title><style>${STYLES}</style></head><body>
-<header><span class="brand">Storage<b>Box</b></span>
-<div class="meta"><span class="name">${name}</span><span class="sub">${escapeHtml(page.sizeLabel)}</span></div>
-<a class="btn" href="${escapeHtml(page.downloadPath)}">Download</a></header>
+${header}
 <main id="view"><div class="status"><div class="spinner"></div>Opening document…</div></main>
 ${scripts}<script nonce="${nonce}">
 (function(){

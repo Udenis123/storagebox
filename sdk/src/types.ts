@@ -103,6 +103,8 @@ export interface SignedUrlOptions {
 export interface CreateCollectionInput {
   name: string;
   parentId?: string;
+  /** Parent collection path — an alternative to `parentId`. */
+  parent?: string;
   access?: FileAccess;
 }
 

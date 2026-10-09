@@ -14,14 +14,19 @@ export const KIND_OPTIONS = (Object.keys(KIND_META) as FileKind[])
   .filter((kind) => kind !== "other")
   .map((kind) => ({ value: kind, label: KIND_META[kind].label }));
 
-export type PreviewKind = "image" | "pdf" | "docx" | "video" | "audio" | "text" | "none";
+export type PreviewKind = "image" | "pdf" | "docx" | "sheet" | "office" | "video" | "audio" | "text" | "none";
 
-const TEXT_EXTENSIONS = new Set(["txt", "csv", "md", "json"]);
+const TEXT_EXTENSIONS = new Set(["txt", "md", "json"]);
+const SHEET_EXTENSIONS = new Set(["xlsx", "xls", "csv"]);
+/** Shown through Office Online, which needs the API to be reachable from the internet. */
+const OFFICE_EXTENSIONS = new Set(["doc", "ppt", "pptx", "odt", "rtf"]);
 
 export function previewKindOf(file: Pick<StoredFile, "kind" | "ext">): PreviewKind {
   if (file.kind === "image") return "image";
   if (file.ext === "pdf") return "pdf";
   if (file.ext === "docx") return "docx";
+  if (SHEET_EXTENSIONS.has(file.ext)) return "sheet";
+  if (OFFICE_EXTENSIONS.has(file.ext)) return "office";
   if (file.kind === "video") return "video";
   if (file.kind === "audio") return "audio";
   if (TEXT_EXTENSIONS.has(file.ext)) return "text";
@@ -36,7 +41,34 @@ export const applyTransform = (url: string, transform: string): string =>
 
 export const isTransformable = (file: Pick<StoredFile, "kind" | "ext">): boolean => file.kind === "image" && file.ext !== "svg";
 
+/** Appends `embed=1` so the delivery route answers with its document viewer, without its own header. */
+export const embeddedViewerUrl = (url: string): string => `${url}${url.includes("?") ? "&" : "?"}embed=1`;
+
 /** Appends `dl=1` so the delivery route answers with `Content-Disposition: attachment`. */
 export const downloadUrl = (url: string): string => `${url}${url.includes("?") ? "&" : "?"}dl=1`;
 
 export const fileTypeLabel = (file: Pick<StoredFile, "ext">): string => file.ext.toUpperCase();
+
+const FORMAT_NAMES: Record<string, string> = {
+  pdf: "PDF document",
+  doc: "Word document",
+  docx: "Word document",
+  odt: "OpenDocument text",
+  rtf: "Rich text document",
+  xls: "Excel spreadsheet",
+  xlsx: "Excel spreadsheet",
+  csv: "CSV spreadsheet",
+  ppt: "PowerPoint presentation",
+  pptx: "PowerPoint presentation",
+  txt: "Plain text",
+  md: "Markdown",
+  json: "JSON",
+  zip: "ZIP archive",
+  svg: "SVG image",
+};
+
+/** Plain-language format such as "Excel spreadsheet (XLSX)". */
+export function formatName(file: Pick<StoredFile, "ext" | "kind">): string {
+  const name = FORMAT_NAMES[file.ext] ?? (file.kind === "other" ? "File" : `${KIND_META[file.kind].label.replace(/s$/, "")} file`);
+  return `${name} (${fileTypeLabel(file)})`;
+}

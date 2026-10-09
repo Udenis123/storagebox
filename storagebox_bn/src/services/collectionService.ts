@@ -13,6 +13,8 @@ import { logActivity } from './activityService';
 export interface CreateCollectionInput {
   name: string;
   parentId?: string;
+  /** Parent collection path, e.g. `invoices` — an alternative to `parentId` for code that works with paths. */
+  parent?: string;
   access?: FileAccess;
 }
 
@@ -37,8 +39,12 @@ const subtreeFilter = (accountId: string, path: string): Prisma.CollectionWhereI
   OR: [{ path }, { path: { startsWith: `${path}/` } }],
 });
 
-export async function findCollection(ctx: AccountContext, id: string): Promise<Collection> {
-  const collection = await prisma.collection.findFirst({ where: { id, accountId: ctx.accountId } });
+/** `ref` is a collection id or its path (`invoices/2026`), so developers can address collections by name. */
+export async function findCollection(ctx: AccountContext, ref: string): Promise<Collection> {
+  const path = ref.trim().replace(/^\/+|\/+$/g, '');
+  const collection = await prisma.collection.findFirst({
+    where: { accountId: ctx.accountId, OR: [{ id: ref }, { path }] },
+  });
   if (!collection) throw notFound();
   return collection;
 }
@@ -64,7 +70,8 @@ export async function createCollection(
   ctx: AccountContext,
   input: CreateCollectionInput,
 ): Promise<ServiceResult<CollectionDto>> {
-  const parent = input.parentId ? await findCollection(ctx, input.parentId) : undefined;
+  const parentRef = input.parentId || input.parent;
+  const parent = parentRef ? await findCollection(ctx, parentRef) : undefined;
   const path = joinPath(parent?.path, segmentFor(input.name));
   await assertPathFree(ctx.accountId, path);
 
@@ -108,10 +115,11 @@ export async function ensureCollectionPath(ctx: AccountContext, rawPath: string)
 
 export async function updateCollection(
   ctx: AccountContext,
-  id: string,
+  ref: string,
   input: UpdateCollectionInput,
 ): Promise<ServiceResult<CollectionDto>> {
-  const collection = await findCollection(ctx, id);
+  const collection = await findCollection(ctx, ref);
+  const { id } = collection;
   const newName = input.name?.trim();
   const isRenamed = Boolean(newName && newName !== collection.name);
 
@@ -122,7 +130,7 @@ export async function updateCollection(
       await assertPathFree(ctx.accountId, newPath);
       await prisma.$executeRaw`
         UPDATE "Collection"
-        SET path = ${newPath} || substring(path from ${collection.path.length + 1}), "updatedAt" = now()
+        SET path = ${newPath} || substring(path from ${collection.path.length + 1}::int), "updatedAt" = now()
         WHERE "accountId" = ${ctx.accountId} AND (path = ${collection.path} OR path LIKE ${`${collection.path}/%`})`;
     }
   }
@@ -138,10 +146,11 @@ export async function updateCollection(
 
 export async function deleteCollection(
   ctx: AccountContext,
-  id: string,
+  ref: string,
   isForced: boolean,
 ): Promise<ServiceResult<{ deletedFiles: number }>> {
-  const collection = await findCollection(ctx, id);
+  const collection = await findCollection(ctx, ref);
+  const { id } = collection;
   const subtree = await prisma.collection.findMany({
     where: subtreeFilter(ctx.accountId, collection.path),
     select: { id: true },

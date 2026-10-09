@@ -32,8 +32,9 @@ export const updateProfileSchema = Joi.object({
 export const createCollectionSchema = Joi.object({
   name: commonSchemas.name.required(),
   parentId: optionalOrEmpty(commonSchemas.id),
+  parent: optionalOrEmpty(commonSchemas.collectionPath),
   access: commonSchemas.access,
-});
+}).oxor('parentId', 'parent');
 
 export const updateCollectionSchema = Joi.object({
   name: commonSchemas.name,

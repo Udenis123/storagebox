@@ -116,14 +116,16 @@ function withQuery(requestPath: string, set: Record<string, string>, remove: str
 }
 
 function viewerResponse(file: File, kind: ViewerKind, requestPath: string): DeliveryResponse {
-  const rawPath = withQuery(requestPath, { raw: '1' }, ['dl']);
+  const isEmbedded = new URL(requestPath, 'http://storagebox.local').searchParams.get('embed') === '1';
+  const rawPath = withQuery(requestPath, { raw: '1' }, ['dl', 'embed']);
   const { html, csp } = renderViewerPage({
     kind,
     fileName: file.originalName,
     sizeLabel: `${file.ext.toUpperCase()} · ${formatBytes(Number(file.sizeBytes))}`,
     rawPath,
-    downloadPath: withQuery(requestPath, { dl: '1' }, ['raw']),
+    downloadPath: withQuery(requestPath, { dl: '1' }, ['raw', 'embed']),
     publicRawUrl: isPubliclyReachable(config.publicUrl) ? `${config.publicUrl}${rawPath}` : undefined,
+    isEmbedded,
   });
   const body = Buffer.from(html);
   return {

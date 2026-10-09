@@ -12,6 +12,7 @@ export const DOC_SECTIONS = [
   { id: "authentication", title: "Authentication" },
   { id: "upload", title: "Upload files" },
   { id: "list", title: "List and search" },
+  { id: "collections", title: "Collections" },
   { id: "signed-links", title: "Signed links" },
   { id: "delete", title: "Delete files" },
   { id: "transformations", title: "Image transformations" },
@@ -218,6 +219,21 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
         </Prose>
         {picker}
         <CodeBlock code={snippets.list[language]} />
+      </DocSection>
+
+      <DocSection id="collections" title="Collections">
+        <Prose>
+          <p>
+            Collections are folders for your files. Uploading to a path such as <code>invoices/2026</code> creates it, or you can create, rename and
+            delete collections yourself. Refer to a collection by its path or its id.
+          </p>
+          <p>
+            A file&apos;s link does not include its collection, so renaming or moving a collection never breaks links you have already shared.
+          </p>
+        </Prose>
+        <CodeBlock
+          code={`await storagebox.collections.create({ name: "invoices", access: "PRIVATE" });\nawait storagebox.collections.create({ name: "2026", parent: "invoices" }); // invoices/2026\n\nawait storagebox.collections.rename("invoices", "billing"); // billing/2026 moves with it\nawait storagebox.collections.update("billing", { access: "PUBLIC" });\nawait storagebox.collections.delete("billing/2026", { force: true }); // also deletes its files\n\n// REST: POST /v1/collections · PATCH /v1/collections/billing · DELETE /v1/collections/billing%2F2026?force=true`}
+        />
       </DocSection>
 
       <DocSection id="signed-links" title="Signed links">

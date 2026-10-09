@@ -5,6 +5,7 @@ import { FormField, INPUT_CLASS } from "@/components/shared/FormField";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatName } from "@/lib/files";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import type { StoredFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -155,7 +156,7 @@ function EditForm({ file }: { file: StoredFile }) {
 
 export function AssetSummary({ file }: { file: StoredFile }) {
   const facts: [string, string][] = [
-    ["Format", `${file.ext.toUpperCase()} · ${file.mime}`],
+    ["Format", formatName(file)],
     ...(file.width && file.height
       ? [
           ["Dimensions", `${file.width} × ${file.height} px`] as [string, string],
@@ -166,6 +167,7 @@ export function AssetSummary({ file }: { file: StoredFile }) {
     ["Collection", file.collectionPath ?? "Unsorted"],
     ["Uploaded", formatDateTime(file.createdAt)],
     ["Updated", formatDateTime(file.updatedAt)],
+    ["MIME type", file.mime],
   ];
 
   return (
@@ -176,7 +178,9 @@ export function AssetSummary({ file }: { file: StoredFile }) {
         {facts.map(([label, value]) => (
           <div key={label} className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2">
             <dt className="text-muted-foreground">{label}</dt>
-            <dd className="font-medium wrap-anywhere">{value}</dd>
+            <dd className={cn("font-medium wrap-anywhere", label === "MIME type" && "font-mono text-xs leading-5 font-normal text-muted-foreground")}>
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
