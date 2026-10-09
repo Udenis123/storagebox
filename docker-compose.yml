@@ -1,0 +1,66 @@
+# Local infrastructure for StorageBox: PostgreSQL + Valkey + RustFS.
+services:
+  postgres:
+    image: postgres:17
+    container_name: storagebox-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: storagebox
+      POSTGRES_USER: storagebox
+      POSTGRES_PASSWORD: storagebox
+    ports:
+      - "5435:5432"
+    volumes:
+      - storagebox-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storagebox -d storagebox"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  valkey:
+    image: valkey/valkey:8
+    container_name: storagebox-valkey
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - storagebox-valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: storagebox-rustfs
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: storagebox_rustfs
+      RUSTFS_SECRET_KEY: storagebox_rustfs_secret
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_CORS_ALLOWED_ORIGINS: "*"
+    command: ["/data"]
+    ports:
+      - "9200:9000"
+    volumes:
+      - storagebox-rustfs:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:9000/health >/dev/null 2>&1 || curl -fsS http://127.0.0.1:9000/health >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  storagebox-postgres:
+  storagebox-valkey:
+  storagebox-rustfs:

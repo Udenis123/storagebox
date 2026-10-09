@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum FileAccess {
+  PUBLIC
+  PRIVATE
+}
+
+enum ApiKeyScope {
+  READ
+  READ_WRITE
+}
+
+enum UsageKind {
+  UPLOAD
+  DELETE
+  DELIVERY
+  TRANSFORM
+}
+
+model Account {
+  id          String   @id @default(cuid())
+  cloudName   String   @unique
+  name        String
+  quotaBytes  BigInt
+  isSuspended Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  collections Collection[]
+  files       File[]
+  apiKeys     ApiKey[]
+  usage       UsageEvent[]
+  webhooks    Webhook[]
+  activity    ActivityLog[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  accountId    String
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(USER)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@index([accountId])
+}
+
+model Session {
+  id               String   @id @default(cuid())
+  userId           String
+  refreshTokenHash String   @unique
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Collection {
+  id        String     @id @default(cuid())
+  accountId String
+  parentId  String?
+  name      String
+  path      String
+  access    FileAccess @default(PUBLIC)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  account  Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  parent   Collection?  @relation("CollectionTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Collection[] @relation("CollectionTree")
+  files    File[]
+
+  @@unique([accountId, path])
+  @@index([parentId])
+}
+
+model File {
+  id           String     @id @default(cuid())
+  accountId    String
+  collectionId String?
+  publicId     String
+  originalName String
+  mime         String
+  ext          String
+  sizeBytes    BigInt
+  checksum     String
+  access       FileAccess @default(PUBLIC)
+  storageKey   String     @unique
+  width        Int?
+  height       Int?
+  tags         String[]   @default([])
+  uploadedById String?
+  apiKeyId     String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  account     Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  collection  Collection?  @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  derivatives Derivative[]
+
+  @@unique([accountId, publicId])
+  @@index([accountId, collectionId])
+  @@index([accountId, createdAt])
+}
+
+model Derivative {
+  id         String   @id @default(cuid())
+  fileId     String
+  transform  String
+  storageKey String   @unique
+  mime       String
+  sizeBytes  BigInt
+  createdAt  DateTime @default(now())
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@unique([fileId, transform])
+}
+
+model ApiKey {
+  id         String      @id @default(cuid())
+  accountId  String
+  name       String
+  keyId      String      @unique
+  secretHash String
+  scope      ApiKeyScope @default(READ_WRITE)
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime    @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+}
+
+model UsageEvent {
+  id        String    @id @default(cuid())
+  accountId String
+  kind      UsageKind
+  bytes     BigInt    @default(0)
+  apiKeyId  String?
+  createdAt DateTime  @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, createdAt])
+  @@index([apiKeyId])
+}
+
+model Webhook {
+  id            String    @id @default(cuid())
+  accountId     String
+  url           String
+  secret        String
+  events        String[]
+  isActive      Boolean   @default(true)
+  lastStatus    Int?
+  lastAttemptAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  accountId String
+  actor     String
+  action    String
+  target    String?
+  createdAt DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, createdAt])
+}
