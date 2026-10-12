@@ -1,4 +1,5 @@
 import { ApiKey, Collection, File, Webhook } from '@prisma/client';
+import { config } from '@/config/config';
 import { kindForExtension } from '@/lib/fileTypes';
 import { publicUrl } from '@/lib/deliveryUrl';
 import { ApiKeyDto, CollectionDto, FileAccess, FileDto, WebhookDto } from '@/types/api';
@@ -35,6 +36,7 @@ export const toCollectionDto = (collection: Collection, fileCount: number): Coll
   path: collection.path,
   parentId: collection.parentId ?? undefined,
   access: collection.access,
+  shareUrl: collection.shareToken ? `${config.appUrl}/s/${collection.shareToken}` : undefined,
   fileCount,
   createdAt: collection.createdAt,
 });

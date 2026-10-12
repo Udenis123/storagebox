@@ -2,7 +2,10 @@ import { RequestHandler, Router } from 'express';
 import {
   createCollectionHandler,
   deleteCollectionHandler,
+  getSharingHandler,
   listCollectionsHandler,
+  shareCollectionHandler,
+  unshareCollectionHandler,
   updateCollectionHandler,
 } from '@/controllers/collectionController';
 import {
@@ -30,6 +33,9 @@ export function collectionRoutes(idParam: string, write: RequestHandler = passTh
   const router = Router();
   router.get('/', listCollectionsHandler);
   router.post('/', write, validation(schemas.createCollectionSchema), createCollectionHandler);
+  router.get(`/${idParam}/share`, getSharingHandler);
+  router.post(`/${idParam}/share`, write, shareCollectionHandler);
+  router.delete(`/${idParam}/share`, write, unshareCollectionHandler);
   router.patch(`/${idParam}`, write, validation(schemas.updateCollectionSchema), updateCollectionHandler);
   router.delete(`/${idParam}`, write, validation(schemas.deleteCollectionQuerySchema, 'query'), deleteCollectionHandler);
   return router;

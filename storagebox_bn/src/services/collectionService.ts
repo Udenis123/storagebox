@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { Collection, Prisma } from '@prisma/client';
 import status from 'http-status';
 import prisma from '@/config/prisma';
@@ -36,7 +37,7 @@ const segmentFor = (name: string): string => {
 const joinPath = (parentPath: string | undefined, segment: string): string =>
   parentPath ? `${parentPath}/${segment}` : segment;
 
-const subtreeFilter = (accountId: string, path: string): Prisma.CollectionWhereInput => ({
+export const subtreeFilter = (accountId: string, path: string): Prisma.CollectionWhereInput => ({
   accountId,
   OR: [{ path }, { path: { startsWith: `${path}/` } }],
 });
@@ -181,4 +182,34 @@ export async function deleteCollection(
   await deleteObjects(files.flatMap((file) => [file.storageKey, ...file.derivatives.map((d) => d.storageKey)]));
   logActivity(ctx, 'collection.deleted', collection.path);
   return { message: 'Collection deleted', data: { deletedFiles: files.length } };
+}
+
+/** 16 URL-safe characters: unguessable, so only people given the link can open the gallery. */
+const SHARE_TOKEN_BYTES = 12;
+
+export interface CollectionSharing {
+  collection: CollectionDto;
+  /** Private files in the collection's subtree; the shared gallery leaves them out. */
+  privateFileCount: number;
+}
+
+async function sharingResult(ctx: AccountContext, collection: Collection): Promise<CollectionSharing> {
+  const [fileCount, privateFileCount] = await Promise.all([
+    prisma.file.count({ where: { collectionId: collection.id } }),
+    prisma.file.count({ where: { access: FileAccess.PRIVATE, collection: subtreeFilter(ctx.accountId, collection.path) } }),
+  ]);
+  return { collection: toCollectionDto(collection, fileCount), privateFileCount };
+}
+
+export async function getCollectionSharing(ctx: AccountContext, ref: string): Promise<ServiceResult<CollectionSharing>> {
+  return { message: 'Sharing retrieved', data: await sharingResult(ctx, await findCollection(ctx, ref)) };
+}
+
+/** Sharing keeps the existing link; turning it off and on again issues a new one. */
+export async function setCollectionSharing(ctx: AccountContext, ref: string, isShared: boolean): Promise<ServiceResult<CollectionSharing>> {
+  const collection = await findCollection(ctx, ref);
+  const shareToken = isShared ? (collection.shareToken ?? randomBytes(SHARE_TOKEN_BYTES).toString('base64url')) : null;
+  const updated = await prisma.collection.update({ where: { id: collection.id }, data: { shareToken } });
+  logActivity(ctx, isShared ? 'collection.shared' : 'collection.unshared', updated.path);
+  return { message: isShared ? 'Collection shared' : 'Sharing turned off', data: await sharingResult(ctx, updated) };
 }

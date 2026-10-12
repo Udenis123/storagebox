@@ -39,8 +39,14 @@ const collectionSchema = {
     path: { type: 'string', example: 'invoices/2026' },
     parentId: { type: 'string' },
     access: { type: 'string', enum: ['PUBLIC', 'PRIVATE'] },
+    shareUrl: { type: 'string', description: 'Public gallery link, present while shared' },
     fileCount: { type: 'integer' },
   },
+};
+
+const sharingSchema = {
+  type: 'object',
+  properties: { collection: collectionSchema, privateFileCount: { type: 'integer', description: 'Private files hidden from the gallery' } },
 };
 
 const accessSchema = { type: 'string', enum: ['PUBLIC', 'PRIVATE'] };
@@ -253,6 +259,16 @@ export const openApiDocument = {
         parameters: [{ name: 'force', in: 'query', schema: { type: 'boolean' } }],
         responses: { 200: ok({ type: 'object' }) },
       },
+    },
+    '/v1/collections/{id}/share': {
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Collection id or URL-encoded path' }],
+      get: { tags: ['Collections'], summary: 'Sharing status and gallery link', responses: { 200: ok(sharingSchema) } },
+      post: {
+        tags: ['Collections'],
+        summary: 'Share as a public gallery (private files stay hidden); keeps an existing link',
+        responses: { 200: ok(sharingSchema) },
+      },
+      delete: { tags: ['Collections'], summary: 'Stop sharing; the gallery link stops working', responses: { 200: ok(sharingSchema) } },
     },
     '/v1/usage': {
       get: { tags: ['Account'], summary: 'Storage, quota and 30-day usage', responses: { 200: ok({ type: 'object' }) } },

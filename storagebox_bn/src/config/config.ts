@@ -23,6 +23,8 @@ export const config = {
   port: Number(optional('PORT', '4200')),
   corsOrigins: list('CORS_ORIGINS', 'http://localhost:3200'),
   publicUrl: optional('PUBLIC_URL', 'http://localhost:4200').replace(/\/+$/, ''),
+  /** Dashboard origin; shared collection galleries live at `${appUrl}/s/<token>`. */
+  appUrl: optional('APP_URL', 'http://localhost:3200').replace(/\/+$/, ''),
   databaseUrl: required('DATABASE_URL'),
   valkeyUrl: optional('VALKEY_URL', 'redis://localhost:6381'),
   jwt: {

@@ -99,6 +99,8 @@ model Collection {
   name      String
   path      String
   access    FileAccess @default(PUBLIC)
+  /// Secret part of the public gallery link (`/s/<token>`); null when the collection is not shared.
+  shareToken String?   @unique
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 

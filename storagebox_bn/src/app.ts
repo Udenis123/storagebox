@@ -10,6 +10,7 @@ import { openApiDocument } from '@/docs/openapi';
 import { errorHandler, notFoundHandler } from '@/middleware/error';
 import apiRoutes from '@/routes/apiRoutes';
 import deliveryRoutes from '@/routes/deliveryRoutes';
+import publicRoutes from '@/routes/publicRoutes';
 import v1Routes from '@/routes/v1Routes';
 
 export function createApp(): Express {
@@ -35,6 +36,7 @@ export function createApp(): Express {
 
   app.use(express.json({ limit: '1mb' }));
   app.use('/v1', cors({ origin: '*', exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining'] }), v1Routes);
+  app.use('/public', cors({ origin: '*' }), publicRoutes);
   app.use('/api', cors({ origin: config.corsOrigins, credentials: true }), apiRoutes);
 
   app.use(notFoundHandler);

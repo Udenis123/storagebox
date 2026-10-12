@@ -1,6 +1,13 @@
 import { Request, Response } from 'express';
 import status from 'http-status';
-import { createCollection, deleteCollection, listCollections, updateCollection } from '@/services/collectionService';
+import {
+  createCollection,
+  deleteCollection,
+  getCollectionSharing,
+  listCollections,
+  setCollectionSharing,
+  updateCollection,
+} from '@/services/collectionService';
 import catchAsync from '@/utils/catchAsync';
 import { currentContext, param } from '@/utils/request';
 import { sendResponse } from '@/utils/response';
@@ -23,5 +30,20 @@ export const updateCollectionHandler = catchAsync(async (req: Request, res: Resp
 export const deleteCollectionHandler = catchAsync(async (req: Request, res: Response) => {
   const isForced = (req.query as { force?: boolean }).force === true;
   const result = await deleteCollection(currentContext(req), param(req, 'id'), isForced);
+  sendResponse(res, status.OK, result.message, result.data);
+});
+
+export const getSharingHandler = catchAsync(async (req: Request, res: Response) => {
+  const result = await getCollectionSharing(currentContext(req), param(req, 'id'));
+  sendResponse(res, status.OK, result.message, result.data);
+});
+
+export const shareCollectionHandler = catchAsync(async (req: Request, res: Response) => {
+  const result = await setCollectionSharing(currentContext(req), param(req, 'id'), true);
+  sendResponse(res, status.OK, result.message, result.data);
+});
+
+export const unshareCollectionHandler = catchAsync(async (req: Request, res: Response) => {
+  const result = await setCollectionSharing(currentContext(req), param(req, 'id'), false);
   sendResponse(res, status.OK, result.message, result.data);
 });

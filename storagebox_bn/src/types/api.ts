@@ -51,6 +51,8 @@ export interface CollectionDto {
   path: string;
   parentId?: string;
   access: FileAccess;
+  /** Public gallery link; present while the collection is shared. */
+  shareUrl?: string;
   fileCount: number;
   createdAt: Date;
 }
