@@ -1,5 +1,5 @@
 import { apiFetch, jsonBody, queryString } from "@/lib/api";
-import type { Collection, FileAccess, FileKind, Paginated, StoredFile } from "@/lib/types";
+import type { Collection, CollectionSharing, FileAccess, FileKind, Paginated, StoredFile } from "@/lib/types";
 
 export type FileSort = "newest" | "oldest" | "name" | "largest" | "smallest";
 
@@ -57,3 +57,8 @@ export const deleteCollection = (id: string, isForced: boolean) =>
   apiFetch<{ deletedFiles: number }>(`/collections/${id}${queryString({ force: isForced ? "true" : undefined })}`, {
     method: "DELETE",
   });
+
+export const getCollectionSharing = (id: string) => apiFetch<CollectionSharing>(`/collections/${encodeURIComponent(id)}/share`);
+
+export const setCollectionSharing = (id: string, isShared: boolean) =>
+  apiFetch<CollectionSharing>(`/collections/${encodeURIComponent(id)}/share`, { method: isShared ? "POST" : "DELETE" });

@@ -1,4 +1,4 @@
-import { DASHBOARD_API_URL } from "./constants";
+import { API_BASE_URL, DASHBOARD_API_URL } from "./constants";
 import { sessionStore } from "./session";
 
 type ApiEnvelope<T> = {
@@ -79,6 +79,17 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     if (res.status === UNAUTHORIZED && sessionStore.get() && (await refreshSessionOnce())) {
       res = await send(path, init);
     }
+  } catch {
+    throw new ApiRequestError("Cannot reach StorageBox. Check your connection and try again.", 0);
+  }
+  return parseEnvelope<T>(res);
+}
+
+/** Unauthenticated reads (share links): no session header, no token refresh. */
+export async function publicFetch<T>(path: string): Promise<ApiResult<T>> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`);
   } catch {
     throw new ApiRequestError("Cannot reach StorageBox. Check your connection and try again.", 0);
   }

@@ -16,6 +16,7 @@ export const DOC_SECTIONS = [
   { id: "collections", title: "Collections" },
   { id: "signed-links", title: "Signed links" },
   { id: "private-files", title: "Private files and access" },
+  { id: "share-collections", title: "Share a collection" },
   { id: "delete", title: "Delete files" },
   { id: "transformations", title: "Image transformations" },
   { id: "webhooks", title: "Webhooks" },
@@ -291,6 +292,19 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
         </Prose>
         <CodeBlock
           code={`const bytes = await storagebox.files.download("invoice_x7k2"); // ArrayBuffer, private files too\nconst stream = await storagebox.files.stream("video_9fd1");     // ReadableStream for big files\n\nawait storagebox.files.setAccess(["invoice_x7k2", "logo_a1b2"], "PRIVATE");\nawait storagebox.collections.update("invoices", { access: "PRIVATE", applyToFiles: true }); // every file inside too\n\n// REST: GET /v1/files/:publicId/content · POST /v1/files/bulk-access { publicIds, access }\n//       PATCH /v1/collections/invoices { access, applyToFiles: true }`}
+        />
+      </DocSection>
+
+      <DocSection id="share-collections" title="Share a collection">
+        <Prose>
+          <p>
+            Share a collection to get one link that opens a photo gallery of everything inside it and its sub-collections. Visitors don&apos;t need an
+            account: they can browse folders, view photos full screen, play videos, read documents and download files. Private files never appear.
+            Use <strong>Share</strong> on the collection in the dashboard, or from code:
+          </p>
+        </Prose>
+        <CodeBlock
+          code={`const { collection, privateFileCount } = await storagebox.collections.share("events/2026");\nconsole.log(collection.shareUrl); // anyone with this link can view the gallery\n\nawait storagebox.collections.unshare("events/2026"); // the link stops working\n\n// REST: POST /v1/collections/:ref/share · DELETE /v1/collections/:ref/share`}
         />
       </DocSection>
 

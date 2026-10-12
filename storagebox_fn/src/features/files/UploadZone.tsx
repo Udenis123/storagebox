@@ -148,26 +148,30 @@ export function UploadZone({ collectionId, collectionPath, collectionLabel, defa
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         className={cn(
-          "grid justify-items-center gap-4 rounded-xl border-2 border-dashed p-6 text-center transition-colors md:p-8",
+          "grid gap-3 rounded-xl border-2 border-dashed p-4 transition-colors",
           isDragging ? "border-primary bg-accent" : "border-border bg-card",
         )}
       >
-        <CloudUpload className="size-10 text-primary" />
-        <div className="grid gap-1">
-          <span className="text-base font-semibold md:text-lg">Drop files or whole folders here</span>
-          <span className="text-sm text-muted-foreground md:text-base">
-            Into <strong className="text-foreground">{collectionLabel}</strong> · sub-folders become collections · up to {MAX_UPLOAD_LABEL} per file
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <CloudUpload className="size-6" />
           </span>
+          <div className="grid min-w-52 flex-1 gap-0.5">
+            <span className="text-base font-semibold">Drop files or whole folders here</span>
+            <span className="text-sm text-muted-foreground">
+              Into <strong className="text-foreground">{collectionLabel}</strong> · sub-folders become collections · up to {MAX_UPLOAD_LABEL} per file
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => fileInputRef.current?.click()}>
+              <Upload /> Choose files
+            </Button>
+            <Button variant="outline" onClick={() => folderInputRef.current?.click()}>
+              <FolderUp /> Choose folder
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={() => fileInputRef.current?.click()}>
-            <Upload /> Choose files
-          </Button>
-          <Button variant="outline" onClick={() => folderInputRef.current?.click()}>
-            <FolderUp /> Choose folder
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 border-t pt-3 text-sm">
           <span className="text-muted-foreground">New files are</span>
           <div className="flex gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Access for new files">
             <AccessChoiceButton
@@ -179,10 +183,8 @@ export function UploadZone({ collectionId, collectionPath, collectionLabel, defa
             <AccessChoiceButton isActive={accessChoice === "PUBLIC"} onClick={() => setAccessChoice("PUBLIC")} icon={<Globe />} label="Public" />
             <AccessChoiceButton isActive={accessChoice === "PRIVATE"} onClick={() => setAccessChoice("PRIVATE")} icon={<Lock />} label="Private" />
           </div>
+          <span className="text-xs text-muted-foreground xl:ml-auto">Photos are optimised and text files compressed automatically.</span>
         </div>
-        <p className="max-w-xl text-xs text-muted-foreground">
-          Photos are optimised and text files compressed automatically. Private files open only through signed links or your API key.
-        </p>
       </div>
       <input
         ref={fileInputRef}

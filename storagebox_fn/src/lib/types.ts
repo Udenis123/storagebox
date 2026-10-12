@@ -45,8 +45,26 @@ export type Collection = {
   path: string;
   parentId?: string;
   access: FileAccess;
+  /** Public gallery link; present while the collection is shared. */
+  shareUrl?: string;
   fileCount: number;
   createdAt: string;
+};
+
+export type CollectionSharing = {
+  collection: Collection;
+  /** Private files inside; the shared gallery leaves them out. */
+  privateFileCount: number;
+};
+
+export type GalleryFolder = { id: string; name: string; fileCount: number; coverUrl?: string };
+
+export type Gallery = {
+  name: string;
+  cloudName: string;
+  breadcrumb: { id: string; name: string }[];
+  folders: GalleryFolder[];
+  files: Paginated<StoredFile>;
 };
 
 export type ApiKey = {

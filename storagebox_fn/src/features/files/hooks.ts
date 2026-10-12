@@ -8,9 +8,11 @@ import {
   createSignedLink,
   deleteCollection,
   deleteFiles,
+  getCollectionSharing,
   getFile,
   listCollections,
   listFiles,
+  setCollectionSharing,
   setFilesAccess,
   updateCollection,
   updateFile,
@@ -88,4 +90,17 @@ export const useDeleteCollection = (onSuccess?: () => void) =>
   useApiMutation(({ id, isForced }: { id: string; isForced: boolean }) => deleteCollection(id, isForced), {
     invalidate: assetQueries,
     onSuccess,
+  });
+
+export function useCollectionSharing(id: string | null) {
+  return useQuery({
+    queryKey: queryKeys.collectionSharing(id ?? ""),
+    queryFn: async () => (await getCollectionSharing(id!)).data,
+    enabled: Boolean(id),
+  });
+}
+
+export const useSetCollectionSharing = () =>
+  useApiMutation(({ id, isShared }: { id: string; isShared: boolean }) => setCollectionSharing(id, isShared), {
+    invalidate: [queryKeys.collections],
   });

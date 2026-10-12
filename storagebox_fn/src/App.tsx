@@ -21,6 +21,7 @@ const DocsPage = lazy(() => import("@/pages/DocsPage"));
 const ActivityPage = lazy(() => import("@/pages/ActivityPage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const AdminPage = lazy(() => import("@/pages/AdminPage"));
+const SharedGalleryPage = lazy(() => import("@/pages/SharedGalleryPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/documentation" element={<DocumentationPage />} />
               <Route path="/developer" element={<DeveloperPage />} />
+              <Route path="/s/:token" element={<SharedGalleryPage />} />
               <Route element={<RequireAuth />}>
                 <Route element={<AppLayout />}>
                   <Route path="/overview" element={<OverviewPage />} />

@@ -2,6 +2,8 @@ export const queryKeys = {
   me: ["me"] as const,
   usage: ["usage"] as const,
   collections: ["collections"] as const,
+  collectionSharing: (id: string) => ["collections", "sharing", id] as const,
+  gallery: (token: string, folder: string, kind: string) => ["gallery", token, folder, kind] as const,
   files: ["files"] as const,
   fileList: (params: object) => ["files", "list", params] as const,
   signedLink: (fileId: string, transform: string, expiresIn: number) => ["files", "signed", fileId, transform, expiresIn] as const,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Folder, FolderOpen, FolderPlus, Inbox, Layers, Lock, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen, FolderPlus, Inbox, Layers, Link2, Lock, MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -27,11 +27,12 @@ function buildTree(collections: Collection[]): TreeNode[] {
 type CollectionTreeProps = {
   selectedId: string;
   onSelect: (id: string) => void;
+  onShare: (collection: Collection) => void;
 };
 
 const ROW = "flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-base transition-colors";
 
-export function CollectionTree({ selectedId, onSelect }: CollectionTreeProps) {
+export function CollectionTree({ selectedId, onSelect, onShare }: CollectionTreeProps) {
   const { data: collections = [], isLoading } = useCollections();
   const [dialog, setDialog] = useState<CollectionDialogState>(null);
   const [toDelete, setToDelete] = useState<Collection | null>(null);
@@ -68,6 +69,7 @@ export function CollectionTree({ selectedId, onSelect }: CollectionTreeProps) {
             {isSelected ? <FolderOpen className="size-5 shrink-0" /> : <Folder className="size-5 shrink-0 text-muted-foreground" />}
             <span className="truncate">{node.name}</span>
             {node.access === "PRIVATE" && <Lock className="size-3.5 shrink-0 text-muted-foreground" />}
+            {node.shareUrl && <Link2 className="size-3.5 shrink-0 text-primary" aria-label="Shared" />}
           </button>
           <span className="text-sm text-muted-foreground">{node.fileCount}</span>
           <DropdownMenu>
@@ -75,6 +77,9 @@ export function CollectionTree({ selectedId, onSelect }: CollectionTreeProps) {
               <MoreHorizontal />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
+              <DropdownMenuItem onClick={() => onShare(node)}>
+                <Share2 /> Share
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setDialog({ mode: "create", parent: node })}>
                 <FolderPlus /> New sub-collection
               </DropdownMenuItem>

@@ -48,7 +48,7 @@ export function AccessBadge({ access, className }: { access: StoredFile["access"
 
 export function FileGrid({ files, selected, onToggle, onOpen }: FileCollectionProps) {
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3 sm:gap-4">
       {files.map((file) => {
         const isSelected = selected.has(file.id);
         return (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FolderOpen, LayoutGrid, List, Search } from "lucide-react";
+import { FolderOpen, LayoutGrid, List, Pencil, Search, Share2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Pagination } from "@/components/shared/Pagination";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
@@ -10,16 +10,19 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { FileSort } from "@/features/files/api";
 import { BulkActions } from "@/features/files/BulkActions";
-import { ALL_FILES, CollectionTree } from "@/features/files/CollectionTree";
+import { CollectionDialog, type CollectionDialogState } from "@/features/files/CollectionDialog";
+import { ALL_FILES, CollectionTree, UNSORTED } from "@/features/files/CollectionTree";
 import { AssetViewer } from "@/features/files/viewer/AssetViewer";
 import { FileGrid, FileTable } from "@/features/files/FileCollection";
 import { useCollections, useFile, useFiles } from "@/features/files/hooks";
+import { ShareCollectionDialog } from "@/features/files/ShareCollectionDialog";
 import { UploadZone } from "@/features/files/UploadZone";
 import { FILES_PAGE_SIZE } from "@/lib/constants";
 import { KIND_OPTIONS } from "@/lib/files";
-import type { FileAccess, FileKind, StoredFile } from "@/lib/types";
+import type { Collection, FileAccess, FileKind, StoredFile } from "@/lib/types";
 
 const ANY = "any";
+const FILTER_WIDTH = "w-full sm:w-44";
 const SEARCH_DEBOUNCE_MS = 300;
 
 const SORT_OPTIONS = [
@@ -48,6 +51,8 @@ export default function LibraryPage() {
 
   const [search, setSearch] = useState(params.get("q") ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sharing, setSharing] = useState<Collection | null>(null);
+  const [editing, setEditing] = useState<CollectionDialogState>(null);
   const { data: collections = [] } = useCollections();
   const { data: openFile } = useFile(openFileId);
 
@@ -89,6 +94,11 @@ export default function LibraryPage() {
 
   const currentCollection = collections.find((collection) => collection.id === collectionId);
   const collectionLabel = currentCollection?.path ?? "Unsorted";
+  const title = currentCollection?.name ?? (collectionId === UNSORTED ? "Unsorted" : "Media Library");
+  const fileCountLabel = data ? `${data.total.toLocaleString()} file${data.total === 1 ? "" : "s"}` : undefined;
+  const description = currentCollection
+    ? [currentCollection.path.split("/").join(" / "), fileCountLabel].filter(Boolean).join(" · ")
+    : (fileCountLabel ?? "Upload, organise and share your files.");
 
   const toggle = (id: string) =>
     setSelected((current) => {
@@ -105,10 +115,22 @@ export default function LibraryPage() {
   return (
     <>
       <PageHeader
-        title="Media Library"
-        description={currentCollection ? `Collection: ${currentCollection.path}` : "Upload, organise and share your files."}
+        title={title}
+        description={description}
+        actions={
+          currentCollection && (
+            <>
+              <Button variant="outline" onClick={() => setEditing({ mode: "rename", collection: currentCollection })}>
+                <Pencil /> Edit
+              </Button>
+              <Button onClick={() => setSharing(currentCollection)}>
+                <Share2 /> {currentCollection.shareUrl ? "Shared" : "Share"}
+              </Button>
+            </>
+          )
+        }
       />
-      <div className="grid gap-6 lg:grid-cols-[17rem_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="rounded-xl border bg-card p-3 lg:sticky lg:top-6 lg:self-start">
           <CollectionTree
             selectedId={collectionId}
@@ -116,6 +138,7 @@ export default function LibraryPage() {
               setSelected(new Set());
               setParam({ collection: id || null });
             }}
+            onShare={setSharing}
           />
         </aside>
 
@@ -127,8 +150,8 @@ export default function LibraryPage() {
             defaultAccess={currentCollection?.access}
           />
 
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1fr_11rem_11rem_11rem_auto]">
-            <div className="relative sm:col-span-2 xl:col-span-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-60 flex-1">
               <Search className="absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
@@ -137,9 +160,15 @@ export default function LibraryPage() {
                 className="h-11 pl-10 text-base"
               />
             </div>
-            <SearchableSelect options={KIND_FILTER} value={kind} onChange={(value) => setParam({ kind: value })} />
-            <SearchableSelect options={ACCESS_FILTER} value={access} onChange={(value) => setParam({ access: value })} />
-            <SearchableSelect options={SORT_OPTIONS} value={sort} onChange={(value) => setParam({ sort: value === "newest" ? null : value })} />
+            <div className={FILTER_WIDTH}>
+              <SearchableSelect options={KIND_FILTER} value={kind} onChange={(value) => setParam({ kind: value })} />
+            </div>
+            <div className={FILTER_WIDTH}>
+              <SearchableSelect options={ACCESS_FILTER} value={access} onChange={(value) => setParam({ access: value })} />
+            </div>
+            <div className={FILTER_WIDTH}>
+              <SearchableSelect options={SORT_OPTIONS} value={sort} onChange={(value) => setParam({ sort: value === "newest" ? null : value })} />
+            </div>
             <div className="flex gap-1 rounded-lg border p-1">
               <Button variant={view === "grid" ? "secondary" : "ghost"} size="icon" onClick={() => setParam({ view: null }, false)} aria-label="Grid view">
                 <LayoutGrid />
@@ -154,7 +183,7 @@ export default function LibraryPage() {
 
           {error && <ErrorDisplay error={error} />}
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3">
               {Array.from({ length: 8 }, (_, index) => (
                 <Skeleton key={index} className="aspect-[4/3.6]" />
               ))}
@@ -183,6 +212,8 @@ export default function LibraryPage() {
         </div>
       </div>
 
+      <ShareCollectionDialog collection={sharing} onClose={() => setSharing(null)} />
+      <CollectionDialog state={editing} onClose={() => setEditing(null)} />
       <AssetViewer
         file={openFileId ? (openFile ?? null) : null}
         siblings={data?.items ?? []}
