@@ -33,8 +33,16 @@ export interface Collection {
   path: string;
   parentId?: string;
   access: FileAccess;
+  /** Public gallery link; present while the collection is shared. */
+  shareUrl?: string;
   fileCount: number;
   createdAt: string;
+}
+
+export interface CollectionSharing {
+  collection: Collection;
+  /** Private files inside; the gallery leaves them out. */
+  privateFileCount: number;
 }
 
 export interface Paginated<T> {

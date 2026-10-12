@@ -2,6 +2,7 @@ import { resolveTransform, withTransform } from "./delivery.js";
 import { StorageBoxError } from "./errors.js";
 import type {
   Collection,
+  CollectionSharing,
   CreateCollectionInput,
   ListFilesQuery,
   Paginated,
@@ -183,6 +184,10 @@ export class StorageBox {
     /** `force` also deletes every file and sub-collection inside. */
     delete: (ref: string, options: { force?: boolean } = {}): Promise<void> =>
       this.request("DELETE", `/collections/${encodeURIComponent(ref)}${queryString({ force: options.force })}`),
+    /** Public gallery link for the collection and its sub-collections; private files stay hidden. Reuses the existing link. */
+    share: (ref: string): Promise<CollectionSharing> => this.request("POST", `/collections/${encodeURIComponent(ref)}/share`),
+    /** Turns the gallery link off; sharing again issues a new link. */
+    unshare: (ref: string): Promise<CollectionSharing> => this.request("DELETE", `/collections/${encodeURIComponent(ref)}/share`),
   };
 
   usage = (): Promise<UsageSummary> => this.request("GET", "/usage");

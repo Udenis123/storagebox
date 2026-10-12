@@ -106,6 +106,11 @@ await storagebox.collections.create({ name: "2026", parent: "invoices" }); // in
 await storagebox.collections.rename("invoices", "billing"); // billing/2026 moves with it
 await storagebox.collections.update("billing", { access: "PUBLIC" });
 await storagebox.collections.update("billing", { access: "PRIVATE", applyToFiles: true }); // every file inside too
+
+// Public gallery link for a collection and its sub-collections (private files stay hidden)
+const { collection } = await storagebox.collections.share("events/2026");
+console.log(collection.shareUrl);
+await storagebox.collections.unshare("events/2026");
 await storagebox.collections.delete("billing/2026", { force: true }); // also deletes its files
 
 const usage = await storagebox.usage(); // storage, quota, daily uploads/deliveries
