@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderInput, Trash2, X } from "lucide-react";
+import { FolderInput, Globe, Lock, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { FormDialog } from "@/components/shared/FormDialog";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { queryKeys } from "@/lib/queryKeys";
 import { updateFile } from "./api";
 import { UNSORTED } from "./CollectionTree";
-import { useCollections, useDeleteFiles } from "./hooks";
+import { useCollections, useDeleteFiles, useSetFilesAccess } from "./hooks";
 
 type BulkActionsProps = { selectedIds: string[]; onClear: () => void };
 
@@ -20,6 +20,7 @@ export function BulkActions({ selectedIds, onClear }: BulkActionsProps) {
   const [isMoving, setIsMoving] = useState(false);
   const [target, setTarget] = useState(UNSORTED);
   const [isMovePending, setIsMovePending] = useState(false);
+  const setAccess = useSetFilesAccess(onClear);
   const deleteFiles = useDeleteFiles(() => {
     setIsConfirmingDelete(false);
     onClear();
@@ -49,6 +50,12 @@ export function BulkActions({ selectedIds, onClear }: BulkActionsProps) {
   return (
     <div className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 pl-4 shadow-md lg:top-4">
       <span className="flex-1 text-base font-semibold">{count} selected</span>
+      <Button variant="outline" disabled={setAccess.isPending} onClick={() => setAccess.mutate({ ids: selectedIds, access: "PUBLIC" })}>
+        <Globe /> Make public
+      </Button>
+      <Button variant="outline" disabled={setAccess.isPending} onClick={() => setAccess.mutate({ ids: selectedIds, access: "PRIVATE" })}>
+        <Lock /> Make private
+      </Button>
       <Button variant="outline" onClick={() => setIsMoving(true)}>
         <FolderInput /> Move
       </Button>

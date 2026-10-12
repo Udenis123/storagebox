@@ -44,7 +44,13 @@ export const listCollections = () => apiFetch<Collection[]>("/collections");
 export const createCollection = (input: CollectionInput) =>
   apiFetch<Collection>("/collections", { method: "POST", body: jsonBody(input) });
 
-export const updateCollection = (id: string, input: { name?: string; access?: FileAccess }) =>
+export const setFilesAccess = (ids: string[], access: FileAccess) =>
+  apiFetch<{ updated: number }>("/files/bulk-access", { method: "POST", body: jsonBody({ ids, access }) });
+
+/** `applyToFiles` also sets `access` on every file in the collection and its sub-collections. */
+export type UpdateCollectionInput = { name?: string; access?: FileAccess; applyToFiles?: boolean };
+
+export const updateCollection = (id: string, input: UpdateCollectionInput) =>
   apiFetch<Collection>(`/collections/${id}`, { method: "PATCH", body: jsonBody(input) });
 
 export const deleteCollection = (id: string, isForced: boolean) =>

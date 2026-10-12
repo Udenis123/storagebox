@@ -35,7 +35,9 @@ function AccessCard({ file }: { file: StoredFile }) {
       </span>
       <div className="grid flex-1 gap-0.5">
         <span className="text-sm font-semibold">{isPublic ? "Public" : "Private"}</span>
-        <span className="text-xs text-muted-foreground">{isPublic ? "Anyone with the link can open it" : "Only expiring signed links work"}</span>
+        <span className="text-xs text-muted-foreground">
+          {isPublic ? "Anyone with the link can open it" : "Opens only through signed links or your API key"}
+        </span>
       </div>
       <Button
         variant="outline"
@@ -154,6 +156,12 @@ function EditForm({ file }: { file: StoredFile }) {
   );
 }
 
+function sizeFact(file: StoredFile): string {
+  if (!file.originalSizeBytes) return formatBytes(file.sizeBytes);
+  const savedPercent = Math.round((1 - file.sizeBytes / file.originalSizeBytes) * 100);
+  return `${formatBytes(file.sizeBytes)} · was ${formatBytes(file.originalSizeBytes)} (${savedPercent}% smaller)`;
+}
+
 export function AssetSummary({ file }: { file: StoredFile }) {
   const facts: [string, string][] = [
     ["Format", formatName(file)],
@@ -163,7 +171,7 @@ export function AssetSummary({ file }: { file: StoredFile }) {
           ["Aspect ratio", aspectRatio(file.width, file.height)] as [string, string],
         ]
       : []),
-    ["Size", formatBytes(file.sizeBytes)],
+    ["Size", sizeFact(file)],
     ["Collection", file.collectionPath ?? "Unsorted"],
     ["Uploaded", formatDateTime(file.createdAt)],
     ["Updated", formatDateTime(file.updatedAt)],

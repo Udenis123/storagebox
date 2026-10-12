@@ -11,9 +11,11 @@ export const DOC_SECTIONS = [
   { id: "quick-start", title: "Quick start" },
   { id: "authentication", title: "Authentication" },
   { id: "upload", title: "Upload files" },
+  { id: "bulk-import", title: "Import a big folder" },
   { id: "list", title: "List and search" },
   { id: "collections", title: "Collections" },
   { id: "signed-links", title: "Signed links" },
+  { id: "private-files", title: "Private files and access" },
   { id: "delete", title: "Delete files" },
   { id: "transformations", title: "Image transformations" },
   { id: "webhooks", title: "Webhooks" },
@@ -211,6 +213,38 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
         </Prose>
         {picker}
         <CodeBlock code={snippets.upload[language]} />
+        <Note>
+          Uploads are optimised automatically: JPG, PNG, WebP and AVIF photos lose their camera data and are re-encoded at high quality (and
+          capped at 4096 px), and TXT, CSV, JSON, Markdown and SVG are stored compressed. Your links still return the full file. PDF, Office files
+          and video are stored exactly as uploaded. The file record shows <code>sizeBytes</code> (stored) and <code>originalSizeBytes</code>.
+        </Note>
+      </DocSection>
+
+      <DocSection id="bulk-import" title="Import a big folder">
+        <Prose>
+          <p>
+            To move a folder with thousands or millions of files, run the importer that ships with the package on the machine that holds the
+            files. Sub-folders become collections, files upload in parallel, and if it stops — Ctrl+C, a crash, a reboot — running the same
+            command again continues where it left off without uploading anything twice.
+          </p>
+        </Prose>
+        <CodeBlock
+          code={`${credentialsEnv({ cloudName }).replace(/^/gm, "export ")}\n\nnpx ${SDK_PACKAGE} upload ./archive --collection archive --access private --concurrency 16\n\n# 120,431 done · 120,102 uploaded · 312 already there · 17 unsupported · 0 failed · 48.2 files/s · 31.5 MB/s`}
+        />
+        <DocTable
+          head={["Option", "What it does"]}
+          rows={[
+            ["--collection", "Collection for the folder; defaults to the folder's name"],
+            ["--access", "public or private; defaults to the collection's access"],
+            ["--concurrency", "Parallel uploads, 1–64 (default 8)"],
+            ["--state", "Progress file; defaults to .storagebox-upload-<hash>.json in the current directory"],
+            ["--dry-run", "Count files and bytes without uploading"],
+          ]}
+        />
+        <Note>
+          Files that fail are listed in <code>&lt;state file&gt;.errors.log</code>. Each upload is one API request, so on a self-hosted server raise{" "}
+          <code>RATE_LIMIT_PER_MINUTE</code> for big imports; the importer waits and retries whenever it hits the limit.
+        </Note>
       </DocSection>
 
       <DocSection id="list" title="List and search">
@@ -245,6 +279,19 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
         </Prose>
         {picker}
         <CodeBlock code={snippets.signed[language]} />
+      </DocSection>
+
+      <DocSection id="private-files" title="Private files and access">
+        <Prose>
+          <p>
+            Every file is <code>PUBLIC</code> or <code>PRIVATE</code>. Pass <code>access</code> when uploading, or let the file take its
+            collection&apos;s access. A private file&apos;s link answers <code>403</code>; share it with a signed link, or read it in your own
+            code with your API key:
+          </p>
+        </Prose>
+        <CodeBlock
+          code={`const bytes = await storagebox.files.download("invoice_x7k2"); // ArrayBuffer, private files too\nconst stream = await storagebox.files.stream("video_9fd1");     // ReadableStream for big files\n\nawait storagebox.files.setAccess(["invoice_x7k2", "logo_a1b2"], "PRIVATE");\nawait storagebox.collections.update("invoices", { access: "PRIVATE", applyToFiles: true }); // every file inside too\n\n// REST: GET /v1/files/:publicId/content · POST /v1/files/bulk-access { publicIds, access }\n//       PATCH /v1/collections/invoices { access, applyToFiles: true }`}
+        />
       </DocSection>
 
       <DocSection id="delete" title="Delete files">

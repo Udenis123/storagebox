@@ -23,7 +23,10 @@ export type StoredFile = {
   mime: string;
   ext: string;
   kind: FileKind;
+  /** Bytes stored, after automatic compression. */
   sizeBytes: number;
+  /** Bytes as uploaded; present only when compression made the file smaller. */
+  originalSizeBytes?: number;
   checksum: string;
   access: FileAccess;
   width?: number;

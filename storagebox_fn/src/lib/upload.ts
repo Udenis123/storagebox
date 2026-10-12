@@ -5,6 +5,8 @@ import type { FileAccess, StoredFile } from "./types";
 
 export type UploadOptions = {
   collectionId?: string;
+  /** Collection path such as `photos/2026`; missing collections are created. Takes priority over `collectionId`. */
+  collection?: string;
   access?: FileAccess;
   tags?: string;
 };
@@ -42,7 +44,8 @@ export async function uploadFile(
 ): Promise<ApiResult<StoredFile[]>> {
   const form = new FormData();
   form.append("file", file);
-  if (options.collectionId) form.append("collectionId", options.collectionId);
+  if (options.collection) form.append("collection", options.collection);
+  else if (options.collectionId) form.append("collectionId", options.collectionId);
   if (options.access) form.append("access", options.access);
   if (options.tags) form.append("tags", options.tags);
 

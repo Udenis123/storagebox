@@ -34,13 +34,13 @@ function CopyLinkButton({ file }: { file: StoredFile }) {
   );
 }
 
-export function AccessBadge({ access }: { access: StoredFile["access"] }) {
+export function AccessBadge({ access, className }: { access: StoredFile["access"]; className?: string }) {
   return access === "PUBLIC" ? (
-    <Badge variant="secondary" className="gap-1">
+    <Badge variant="secondary" className={cn("gap-1", className)}>
       <Globe /> Public
     </Badge>
   ) : (
-    <Badge variant="outline" className="gap-1 text-tone-warning">
+    <Badge variant="outline" className={cn("gap-1 text-tone-warning", className)}>
       <Lock /> Private
     </Badge>
   );
@@ -59,12 +59,18 @@ export function FileGrid({ files, selected, onToggle, onOpen }: FileCollectionPr
               isSelected && "ring-2 ring-primary",
             )}
           >
-            <button type="button" onClick={() => onOpen(file)} className="grid text-left">
-              <FileThumb file={file} className="aspect-[4/3] w-full rounded-none" isDetailed />
-              <span className="grid gap-0.5 p-3">
-                <span className="truncate text-sm font-semibold md:text-base">{file.originalName}</span>
-                <span className="text-xs text-muted-foreground md:text-sm">
+            <button type="button" onClick={() => onOpen(file)} className="grid min-w-0 text-left">
+              <FileThumb file={file} className="aspect-[4/3] w-full rounded-none border-b" isDetailed />
+              <span className="grid grid-cols-[minmax(0,1fr)] gap-1 p-3">
+                <span className="truncate text-sm font-semibold md:text-base" title={file.originalName}>
+                  {file.originalName}
+                </span>
+                <span className="truncate text-xs text-muted-foreground md:text-sm">
                   {file.ext.toUpperCase()} · {formatBytes(file.sizeBytes)}
+                </span>
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <AccessBadge access={file.access} className="shrink-0" />
+                  {file.collectionPath && <span className="min-w-0 truncate">{file.collectionPath}</span>}
                 </span>
               </span>
             </button>

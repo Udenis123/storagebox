@@ -9,7 +9,10 @@ export const MAX_UPLOAD_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB ?? 5120);
 const MB_PER_GB = 1024;
 /** "5 GB" rather than "5120 MB". */
 export const MAX_UPLOAD_LABEL = MAX_UPLOAD_MB >= MB_PER_GB ? `${+(MAX_UPLOAD_MB / MB_PER_GB).toFixed(1)} GB` : `${MAX_UPLOAD_MB} MB`;
+/** Per API request; the dashboard sends one file per request. */
 export const MAX_FILES_PER_UPLOAD = 20;
+/** Files the dashboard queues from one drop or folder; bigger imports go through the CLI. */
+export const MAX_FILES_PER_DROP = 2000;
 export const FILES_PAGE_SIZE = 30;
 
 export const ALLOWED_FILE_ACCEPT = [

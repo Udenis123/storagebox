@@ -120,7 +120,12 @@ export default function LibraryPage() {
         </aside>
 
         <div className="grid min-w-0 content-start gap-4">
-          <UploadZone collectionId={currentCollection?.id} collectionLabel={collectionLabel} access={currentCollection?.access} />
+          <UploadZone
+            collectionId={currentCollection?.id}
+            collectionPath={currentCollection?.path}
+            collectionLabel={collectionLabel}
+            defaultAccess={currentCollection?.access}
+          />
 
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1fr_11rem_11rem_11rem_auto]">
             <div className="relative sm:col-span-2 xl:col-span-1">

@@ -76,3 +76,18 @@ export function formatName(file: Pick<StoredFile, "ext" | "kind">): string {
   const name = FORMAT_NAMES[file.ext] ?? (file.kind === "other" ? "File" : `${KIND_META[file.kind].label.replace(/s$/, "")} file`);
   return `${name} (${fileTypeLabel(file)})`;
 }
+
+/** Collection names accept only ASCII letters, digits, spaces, `-` and `_`. */
+const collectionSegment = (name: string): string =>
+  name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\- ]+/g, "-")
+    .replace(/^[-\s]+|[-\s]+$/g, "") || "folder";
+
+/** `Trip/Day 1/a.jpg` uploaded into `photos` → `photos/Trip/Day 1`: sub-folders become collections. */
+export function folderCollectionPath(basePath: string | undefined, relativePath: string): string | undefined {
+  const folders = relativePath.split("/").slice(0, -1).map(collectionSegment);
+  const segments = [...(basePath ? [basePath] : []), ...folders];
+  return segments.length ? segments.join("/") : undefined;
+}

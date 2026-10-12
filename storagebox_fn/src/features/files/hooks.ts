@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { applyTransform, isTransformable } from "@/lib/files";
 import { queryKeys } from "@/lib/queryKeys";
-import type { StoredFile } from "@/lib/types";
+import type { FileAccess, StoredFile } from "@/lib/types";
 import {
   createCollection,
   createSignedLink,
@@ -11,10 +11,12 @@ import {
   getFile,
   listCollections,
   listFiles,
+  setFilesAccess,
   updateCollection,
   updateFile,
   type CollectionInput,
   type FileListParams,
+  type UpdateCollectionInput,
   type UpdateFileInput,
 } from "./api";
 
@@ -67,6 +69,9 @@ export const useUpdateFile = (onSuccess?: (file: StoredFile) => void) =>
     onSuccess,
   });
 
+export const useSetFilesAccess = (onSuccess?: () => void) =>
+  useApiMutation(({ ids, access }: { ids: string[]; access: FileAccess }) => setFilesAccess(ids, access), { invalidate: assetQueries, onSuccess });
+
 export const useDeleteFiles = (onSuccess?: () => void) =>
   useApiMutation((ids: string[]) => deleteFiles(ids), { invalidate: assetQueries, onSuccess });
 
@@ -74,7 +79,7 @@ export const useCreateCollection = (onSuccess?: () => void) =>
   useApiMutation((input: CollectionInput) => createCollection(input), { invalidate: [queryKeys.collections], onSuccess });
 
 export const useUpdateCollection = (onSuccess?: () => void) =>
-  useApiMutation(({ id, name, access }: { id: string; name?: string; access?: "PUBLIC" | "PRIVATE" }) => updateCollection(id, { name, access }), {
+  useApiMutation(({ id, ...input }: UpdateCollectionInput & { id: string }) => updateCollection(id, input), {
     invalidate: assetQueries,
     onSuccess,
   });
