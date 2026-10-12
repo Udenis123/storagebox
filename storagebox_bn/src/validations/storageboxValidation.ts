@@ -39,7 +39,10 @@ export const createCollectionSchema = Joi.object({
 export const updateCollectionSchema = Joi.object({
   name: commonSchemas.name,
   access: commonSchemas.access,
-}).min(1);
+  applyToFiles: Joi.boolean(),
+})
+  .min(1)
+  .with('applyToFiles', 'access');
 
 export const deleteCollectionQuerySchema = Joi.object({
   force: Joi.boolean().default(false),
@@ -77,6 +80,14 @@ export const updateFileSchema = Joi.object({
 export const bulkDeleteSchema = Joi.object({
   ids: Joi.array().items(commonSchemas.id).min(1).max(200).required(),
 });
+
+const MAX_BULK_ACCESS_FILES = 1000;
+
+export const bulkAccessSchema = Joi.object({
+  ids: Joi.array().items(commonSchemas.id).min(1).max(MAX_BULK_ACCESS_FILES),
+  publicIds: Joi.array().items(Joi.string().trim().max(120)).min(1).max(MAX_BULK_ACCESS_FILES),
+  access: commonSchemas.access.required(),
+}).xor('ids', 'publicIds');
 
 export const signedLinkSchema = Joi.object({
   expiresIn: Joi.number().integer().min(60).max(MAX_SIGNED_URL_SECONDS).default(3600),

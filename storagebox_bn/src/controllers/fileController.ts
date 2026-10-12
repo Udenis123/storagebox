@@ -2,10 +2,13 @@ import { Request, Response } from 'express';
 import status from 'http-status';
 import { fetchRemoteFile } from '@/lib/remoteFetch';
 import { removeTempFiles } from '@/lib/tempFiles';
+import { deliverOwnFile } from '@/services/deliveryService';
 import {
   createSignedLink,
   deleteFiles,
   FileRef,
+  findFileRecord,
+  setFilesAccess,
   getFile,
   listFiles,
   ListFilesQuery,
@@ -16,6 +19,7 @@ import {
 import catchAsync from '@/utils/catchAsync';
 import { currentContext, param } from '@/utils/request';
 import { sendResponse } from '@/utils/response';
+import { sendDelivery } from '@/utils/sendDelivery';
 
 /** Dashboard routes address files by `:id`; the developer API addresses them by `:publicId`. */
 const fileRef = (req: Request): FileRef => (req.params.publicId ? { publicId: param(req, 'publicId') } : { id: param(req, 'id') });
@@ -62,4 +66,22 @@ export const bulkDeleteFilesHandler = catchAsync(async (req: Request, res: Respo
 export const signedLinkHandler = catchAsync(async (req: Request, res: Response) => {
   const result = await createSignedLink(currentContext(req), fileRef(req), req.body);
   sendResponse(res, status.OK, result.message, result.data);
+});
+
+export const bulkAccessHandler = catchAsync(async (req: Request, res: Response) => {
+  const result = await setFilesAccess(currentContext(req), req.body);
+  sendResponse(res, status.OK, result.message, result.data);
+});
+
+/** The file's bytes for its own account — private files included, no signed link needed. */
+export const fileContentHandler = catchAsync(async (req: Request, res: Response) => {
+  const file = await findFileRecord(currentContext(req), fileRef(req));
+  await sendDelivery(res, () =>
+    deliverOwnFile(file, {
+      isDownload: req.query.dl === '1',
+      range: req.headers.range,
+      ifNoneMatch: req.headers['if-none-match'],
+      acceptsGzip: req.acceptsEncodings('gzip') === 'gzip',
+    }),
+  );
 });

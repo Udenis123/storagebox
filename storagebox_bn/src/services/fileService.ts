@@ -8,6 +8,7 @@ import logger from '@/config/logger';
 import { signedUrl } from '@/lib/deliveryUrl';
 import { extensionOf, extensionsForKind, isAllowedExtension, isTransformable, mimeForExtension } from '@/lib/fileTypes';
 import { deleteObjects, putObjectStream } from '@/lib/storage';
+import { prepareForStorage, PreparedUpload } from '@/lib/optimizeUpload';
 import { sha256File } from '@/lib/tempFiles';
 import { parseTransform, TransformParseError } from '@/lib/transform';
 import { AccountContext, FileAccess, FileDto, FileKind } from '@/types/api';
@@ -85,7 +86,7 @@ const withCollection = { collection: { select: { path: true } } } as const;
 
 const fileNotFound = () => new ApiError(status.NOT_FOUND, 'File not found', ERROR_CODES.FILE_NOT_FOUND);
 
-async function findFileRecord(ctx: AccountContext, ref: FileRef) {
+export async function findFileRecord(ctx: AccountContext, ref: FileRef) {
   const file = await prisma.file.findFirst({ where: { accountId: ctx.accountId, ...ref }, include: withCollection });
   if (!file) throw fileNotFound();
   return file;
@@ -145,9 +146,33 @@ async function storeOne(
   const mime = mimeForExtension(ext);
   const storageKey = `${ctx.accountId}/${randomUUID()}.${ext}`;
   const checksum = await sha256File(source.path);
-  const dimensions = await imageDimensions(source.path, ext);
-  await putObjectStream(storageKey, createReadStream(source.path), mime);
+  const stored = await prepareForStorage(source.path, source.size, ext);
+  try {
+    const dimensions = await imageDimensions(stored.path, ext);
+    await putObjectStream(storageKey, createReadStream(stored.path), mime);
+    return await recordStoredFile(ctx, { source, stored, collection, options, publicId, mime, ext, storageKey, checksum, dimensions });
+  } finally {
+    await stored.cleanup();
+  }
+}
 
+interface StoredFileRecord {
+  source: UploadSource;
+  stored: PreparedUpload;
+  collection: { id: string; access: FileAccess } | null;
+  options: UploadOptions;
+  publicId: string;
+  mime: string;
+  ext: string;
+  storageKey: string;
+  checksum: string;
+  dimensions: { width?: number; height?: number };
+}
+
+async function recordStoredFile(
+  ctx: AccountContext,
+  { source, stored, collection, options, publicId, mime, ext, storageKey, checksum, dimensions }: StoredFileRecord,
+): Promise<FileDto> {
   try {
     const file = await prisma.file.create({
       data: {
@@ -157,7 +182,9 @@ async function storeOne(
         originalName: source.originalName,
         mime,
         ext,
-        sizeBytes: BigInt(source.size),
+        sizeBytes: BigInt(stored.size),
+        originalSizeBytes: stored.size < source.size ? BigInt(source.size) : null,
+        contentEncoding: stored.contentEncoding,
         checksum,
         access: options.access ?? collection?.access ?? FileAccess.PUBLIC,
         storageKey,
@@ -267,6 +294,20 @@ export async function updateFile(ctx: AccountContext, ref: FileRef, input: Updat
   });
   logActivity(ctx, 'file.updated', updated.originalName);
   return { message: 'File updated', data: toFileDto(updated, ctx.cloudName) };
+}
+
+export interface BulkAccessInput {
+  ids?: string[];
+  publicIds?: string[];
+  access: FileAccess;
+}
+
+export async function setFilesAccess(ctx: AccountContext, input: BulkAccessInput): Promise<ServiceResult<{ updated: number }>> {
+  const match = input.ids ? { id: { in: input.ids } } : { publicId: { in: input.publicIds ?? [] } };
+  const { count } = await prisma.file.updateMany({ where: { accountId: ctx.accountId, ...match }, data: { access: input.access } });
+  if (count === 0) throw fileNotFound();
+  logActivity(ctx, 'file.access_changed', `${count} file(s) → ${input.access.toLowerCase()}`);
+  return { message: `${count} file${count === 1 ? '' : 's'} made ${input.access.toLowerCase()}`, data: { updated: count } };
 }
 
 export async function deleteFiles(ctx: AccountContext, refs: FileRef[]): Promise<ServiceResult<{ deleted: number }>> {

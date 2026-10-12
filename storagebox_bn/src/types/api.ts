@@ -29,7 +29,10 @@ export interface FileDto {
   mime: string;
   ext: string;
   kind: FileKind;
+  /** Bytes in storage (after compression). */
   sizeBytes: number;
+  /** Size as uploaded — present only when compression saved space. */
+  originalSizeBytes?: number;
   checksum: string;
   access: FileAccess;
   width?: number;

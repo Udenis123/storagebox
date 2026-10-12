@@ -18,8 +18,9 @@ const fileSchema = {
     mime: { type: 'string', example: 'application/pdf' },
     ext: { type: 'string', example: 'pdf' },
     kind: { type: 'string', enum: ['image', 'document', 'video', 'audio', 'archive', 'other'] },
-    sizeBytes: { type: 'integer' },
-    checksum: { type: 'string', description: 'sha256 of the content' },
+    sizeBytes: { type: 'integer', description: 'Bytes stored, after automatic compression' },
+    originalSizeBytes: { type: 'integer', description: 'Bytes as uploaded; present only when compression saved space' },
+    checksum: { type: 'string', description: 'sha256 of the uploaded content' },
     access: { type: 'string', enum: ['PUBLIC', 'PRIVATE'] },
     width: { type: 'integer' },
     height: { type: 'integer' },
@@ -42,6 +43,7 @@ const collectionSchema = {
   },
 };
 
+const accessSchema = { type: 'string', enum: ['PUBLIC', 'PRIVATE'] };
 const publicIdParam = { name: 'publicId', in: 'path', required: true, schema: { type: 'string' } };
 const ok = (data: object, description = 'OK') => ({
   description,
@@ -151,6 +153,32 @@ export const openApiDocument = {
       },
       delete: { tags: ['Files'], summary: 'Delete a file', responses: { 200: ok({ type: 'object' }) } },
     },
+    '/v1/files/{publicId}/content': {
+      parameters: [publicIdParam, { name: 'dl', in: 'query', schema: { type: 'string', enum: ['1'] }, description: 'Send as an attachment' }],
+      get: {
+        tags: ['Files'],
+        summary: "Download the file's bytes with your API key (private files included)",
+        responses: { 200: { description: 'The original file; supports Range requests' } },
+      },
+    },
+    '/v1/files/bulk-access': {
+      post: {
+        tags: ['Files'],
+        summary: 'Make many files public or private',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['publicIds', 'access'],
+                properties: { publicIds: { type: 'array', items: { type: 'string' }, maxItems: 1000 }, access: accessSchema },
+              },
+            },
+          },
+        },
+        responses: { 200: ok({ type: 'object', properties: { updated: { type: 'integer' } } }) },
+      },
+    },
     '/v1/files/{publicId}/signed-url': {
       parameters: [publicIdParam],
       post: {
@@ -199,8 +227,26 @@ export const openApiDocument = {
       },
     },
     '/v1/collections/{id}': {
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-      patch: { tags: ['Collections'], summary: 'Rename or change default access', responses: { 200: ok(collectionSchema) } },
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Collection id or URL-encoded path' }],
+      patch: {
+        tags: ['Collections'],
+        summary: 'Rename or change default access',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  access: accessSchema,
+                  applyToFiles: { type: 'boolean', description: 'Also set `access` on every file in the collection and its sub-collections' },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: ok(collectionSchema) },
+      },
       delete: {
         tags: ['Collections'],
         summary: 'Delete a collection (force=true also deletes its files)',

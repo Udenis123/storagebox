@@ -1,9 +1,11 @@
-import { Readable } from 'stream';
+import { pipeline, Readable } from 'stream';
 import { File, UsageKind } from '@prisma/client';
 import status from 'http-status';
+import { createGunzip } from 'zlib';
 import { config } from '@/config/config';
 import prisma from '@/config/prisma';
 import { DeliveryTarget, verifyDeliverySignature } from '@/lib/deliveryUrl';
+import { GZIP_ENCODING } from '@/lib/optimizeUpload';
 import { renderViewerPage, ViewerKind, viewerKindFor } from '@/lib/documentViewer';
 import { isTransformable } from '@/lib/fileTypes';
 import { getObject, getObjectBuffer, putObject } from '@/lib/storage';
@@ -29,6 +31,7 @@ export interface DeliveryRequest {
   isDownload: boolean;
   range?: string;
   ifNoneMatch?: string;
+  acceptsGzip?: boolean;
   /** Request URL when a browser navigates to the link; documents it can't display get a viewer page instead. */
   viewerPath?: string;
 }
@@ -144,6 +147,28 @@ function viewerResponse(file: File, kind: ViewerKind, requestPath: string): Deli
   };
 }
 
+const SVG_CSP = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+
+const appendVary = (headers: Record<string, string>, value: string): string => (headers.Vary ? `${headers.Vary}, ${value}` : value);
+
+/** Text stored gzipped: sent as-is to clients that accept gzip, decoded for the rest. Ranges are not offered. */
+async function deliverGzipped(file: File, baseHeaders: Record<string, string>, request: OriginalRequest): Promise<DeliveryResponse> {
+  const object = await getObject(file.storageKey);
+  const headers: Record<string, string> = { ...baseHeaders, 'Content-Type': file.mime, Vary: appendVary(baseHeaders, 'Accept-Encoding') };
+  if (file.ext === 'svg') headers['Content-Security-Policy'] = SVG_CSP;
+  recordUsage(file.accountId, UsageKind.DELIVERY, object.contentLength ?? 0);
+
+  if (request.acceptsGzip) {
+    headers['Content-Encoding'] = GZIP_ENCODING;
+    if (object.contentLength !== undefined) headers['Content-Length'] = String(object.contentLength);
+    return { statusCode: status.OK, headers, body: object.body };
+  }
+  if (file.originalSizeBytes !== null) headers['Content-Length'] = String(file.originalSizeBytes);
+  const decoded = createGunzip();
+  pipeline(object.body, decoded, () => undefined);
+  return { statusCode: status.OK, headers, body: decoded };
+}
+
 export async function deliver(request: DeliveryRequest): Promise<DeliveryResponse> {
   const { publicId, ext } = splitAsset(request.asset);
   const file = await findDeliverableFile(request.cloudName, publicId, ext);
@@ -154,7 +179,7 @@ export async function deliver(request: DeliveryRequest): Promise<DeliveryRespons
     return viewerResponse(file, viewerKind, request.viewerPath);
   }
 
-  const etag = `"${file.checksum.slice(0, 32)}${request.transform ? `-${sha256Hex(request.transform).slice(0, 8)}` : ''}"`;
+  const etag = etagFor(file, request.transform);
   const baseHeaders: Record<string, string> = {
     ETag: etag,
     /** Viewer-capable files answer browsers with HTML and apps with bytes on one URL, so no shared or stale copy may be reused. */
@@ -177,13 +202,44 @@ export async function deliver(request: DeliveryRequest): Promise<DeliveryRespons
     };
   }
 
+  return originalResponse(file, baseHeaders, request);
+}
+
+const etagFor = (file: File, transform?: string): string =>
+  `"${file.checksum.slice(0, 32)}${transform ? `-${sha256Hex(transform).slice(0, 8)}` : ''}"`;
+
+type OriginalRequest = Pick<DeliveryRequest, 'range' | 'acceptsGzip'>;
+
+/** The stored file itself (no transform), streamed with range support. */
+async function originalResponse(file: File, baseHeaders: Record<string, string>, request: OriginalRequest): Promise<DeliveryResponse> {
+  if (file.contentEncoding === GZIP_ENCODING) return deliverGzipped(file, baseHeaders, request);
+
   const object = await getObject(file.storageKey, request.range);
   const headers: Record<string, string> = { ...baseHeaders, 'Content-Type': file.mime, 'Accept-Ranges': 'bytes' };
   if (object.contentLength !== undefined) headers['Content-Length'] = String(object.contentLength);
   if (object.contentRange) headers['Content-Range'] = object.contentRange;
   // SVG can carry scripts; sandbox it so a hosted SVG cannot run code on this origin.
-  if (file.ext === 'svg') headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+  if (file.ext === 'svg') headers['Content-Security-Policy'] = SVG_CSP;
 
   recordUsage(file.accountId, UsageKind.DELIVERY, object.contentLength ?? 0);
   return { statusCode: object.contentRange ? status.PARTIAL_CONTENT : status.OK, headers, body: object.body };
+}
+
+export interface OwnFileRequest extends OriginalRequest {
+  isDownload: boolean;
+  ifNoneMatch?: string;
+}
+
+/** Bytes of a file for its own account (dashboard session or API key) — works for private files without a signed link. */
+export async function deliverOwnFile(file: File, request: OwnFileRequest): Promise<DeliveryResponse> {
+  const etag = etagFor(file);
+  const baseHeaders: Record<string, string> = {
+    ETag: etag,
+    'Cache-Control': 'private, no-store',
+    'Last-Modified': file.updatedAt.toUTCString(),
+    'Content-Disposition': contentDisposition(file.originalName, request.isDownload ? 'attachment' : 'inline'),
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (request.ifNoneMatch === etag) return { statusCode: status.NOT_MODIFIED, headers: baseHeaders };
+  return originalResponse(file, baseHeaders, request);
 }

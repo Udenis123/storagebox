@@ -21,6 +21,8 @@ export interface CreateCollectionInput {
 export interface UpdateCollectionInput {
   name?: string;
   access?: FileAccess;
+  /** Also switch every file in this collection and its sub-collections to `access`. */
+  applyToFiles?: boolean;
 }
 
 const notFound = () => new ApiError(status.NOT_FOUND, 'Collection not found', ERROR_CODES.COLLECTION_NOT_FOUND);
@@ -95,20 +97,17 @@ export async function ensureCollectionPath(ctx: AccountContext, rawPath: string)
   for (const name of names) {
     const parent = current;
     const path = joinPath(parent?.path, segmentFor(name));
-    const existing = await prisma.collection.findUnique({
-      where: { accountId_path: { accountId: ctx.accountId, path } },
-    });
+    const where = { accountId_path: { accountId: ctx.accountId, path } };
     current =
-      existing ??
-      (await prisma.collection.create({
-        data: {
-          accountId: ctx.accountId,
-          parentId: parent?.id,
-          name,
-          path,
-          access: parent?.access ?? FileAccess.PUBLIC,
-        },
-      }));
+      (await prisma.collection.findUnique({ where })) ??
+      (await prisma.collection
+        .create({ data: { accountId: ctx.accountId, parentId: parent?.id, name, path, access: parent?.access ?? FileAccess.PUBLIC } })
+        .catch(async (error: unknown) => {
+          // Parallel uploads into a new folder race to create it; the loser uses the winner's row.
+          const isTaken = error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+          if (!isTaken) throw error;
+          return prisma.collection.findUniqueOrThrow({ where });
+        }));
   }
   return current;
 }
@@ -139,6 +138,11 @@ export async function updateCollection(
     where: { id },
     data: { name: newName, access: input.access },
   });
+  if (input.applyToFiles && input.access) {
+    const subtree = { accountId: ctx.accountId, OR: [{ path: updated.path }, { path: { startsWith: `${updated.path}/` } }] };
+    await prisma.collection.updateMany({ where: subtree, data: { access: input.access } });
+    await prisma.file.updateMany({ where: { accountId: ctx.accountId, collection: subtree }, data: { access: input.access } });
+  }
   const fileCount = await prisma.file.count({ where: { collectionId: id } });
   logActivity(ctx, 'collection.updated', updated.path);
   return { message: 'Collection updated', data: toCollectionDto(updated, fileCount) };

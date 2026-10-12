@@ -112,24 +112,30 @@ model Collection {
 }
 
 model File {
-  id           String     @id @default(cuid())
-  accountId    String
-  collectionId String?
-  publicId     String
-  originalName String
-  mime         String
-  ext          String
-  sizeBytes    BigInt
-  checksum     String
-  access       FileAccess @default(PUBLIC)
-  storageKey   String     @unique
-  width        Int?
-  height       Int?
-  tags         String[]   @default([])
-  uploadedById String?
-  apiKeyId     String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id                String     @id @default(cuid())
+  accountId         String
+  collectionId      String?
+  publicId          String
+  originalName      String
+  mime              String
+  ext               String
+  /// Bytes kept in storage — what counts against the quota.
+  sizeBytes         BigInt
+  /// Size as uploaded, when compression made the stored copy smaller.
+  originalSizeBytes BigInt?
+  /// `gzip` when the stored object is compressed text, decoded on delivery.
+  contentEncoding   String?
+  /// SHA-256 of the file as uploaded.
+  checksum          String
+  access            FileAccess @default(PUBLIC)
+  storageKey        String     @unique
+  width             Int?
+  height            Int?
+  tags              String[]   @default([])
+  uploadedById      String?
+  apiKeyId          String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
   account     Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   collection  Collection?  @relation(fields: [collectionId], references: [id], onDelete: SetNull)

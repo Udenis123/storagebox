@@ -6,8 +6,10 @@ import {
   updateCollectionHandler,
 } from '@/controllers/collectionController';
 import {
+  bulkAccessHandler,
   bulkDeleteFilesHandler,
   deleteFileHandler,
+  fileContentHandler,
   getFileHandler,
   listFilesHandler,
   signedLinkHandler,
@@ -38,7 +40,9 @@ export function fileRoutes(refParam: ':id' | ':publicId', write: RequestHandler 
   router.get('/', validation(schemas.listFilesQuerySchema, 'query'), listFilesHandler);
   router.post('/', write, ...acceptUploads, validation(schemas.uploadSchema), uploadFilesHandler);
   router.post('/bulk-delete', write, validation(schemas.bulkDeleteSchema), bulkDeleteFilesHandler);
+  router.post('/bulk-access', write, validation(schemas.bulkAccessSchema), bulkAccessHandler);
   router.get(`/${refParam}`, getFileHandler);
+  router.get(`/${refParam}/content`, fileContentHandler);
   router.patch(`/${refParam}`, write, validation(schemas.updateFileSchema), updateFileHandler);
   router.delete(`/${refParam}`, write, deleteFileHandler);
   router.post(`/${refParam}/signed-url`, validation(schemas.signedLinkSchema), signedLinkHandler);

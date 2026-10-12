@@ -15,6 +15,7 @@ export function toFileDto(file: FileWithCollection, cloudName: string): FileDto 
     ext: file.ext,
     kind: kindForExtension(file.ext),
     sizeBytes: Number(file.sizeBytes),
+    originalSizeBytes: file.originalSizeBytes === null ? undefined : Number(file.originalSizeBytes),
     checksum: file.checksum,
     access: file.access,
     width: file.width ?? undefined,
