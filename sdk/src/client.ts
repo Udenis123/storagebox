@@ -81,9 +81,9 @@ export class StorageBox {
     this.fetcher = config.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
-  private async request<T>(method: string, path: string, body?: FormData | object): Promise<T> {
+  private send(method: string, path: string, body?: FormData | object): Promise<Response> {
     const isForm = body instanceof FormData;
-    const response = await this.fetcher(`${this.baseUrl}/v1${path}`, {
+    return this.fetcher(`${this.baseUrl}/v1${path}`, {
       method,
       headers: {
         authorization: this.authorization,
@@ -92,12 +92,26 @@ export class StorageBox {
       },
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
+  }
+
+  private async failure(response: Response): Promise<StorageBoxError> {
+    const payload = (await response.json().catch(() => null)) as Envelope<unknown> | null;
+    const retryAfter = Number(response.headers.get("retry-after")) || undefined;
+    return new StorageBoxError(payload?.message ?? `Request failed with status ${response.status}`, response.status, payload?.errorCode, retryAfter);
+  }
+
+  private async request<T>(method: string, path: string, body?: FormData | object): Promise<T> {
+    const response = await this.send(method, path, body);
+    if (!response.ok) throw await this.failure(response);
     const payload = (await response.json().catch(() => null)) as Envelope<T> | null;
-    if (!response.ok) {
-      const retryAfter = Number(response.headers.get("retry-after")) || undefined;
-      throw new StorageBoxError(payload?.message ?? `Request failed with status ${response.status}`, response.status, payload?.errorCode, retryAfter);
-    }
     return payload?.data as T;
+  }
+
+  /** The file's bytes through the API key — private files included, no signed link needed. */
+  private async content(publicId: string): Promise<Response> {
+    const response = await this.send("GET", `/files/${encodeURIComponent(publicId)}/content`);
+    if (!response.ok) throw await this.failure(response);
+    return response;
   }
 
   readonly files = {
@@ -132,6 +146,20 @@ export class StorageBox {
       this.request("PATCH", `/files/${encodeURIComponent(publicId)}`, input),
 
     delete: (publicId: string): Promise<void> => this.request("DELETE", `/files/${encodeURIComponent(publicId)}`),
+
+    /** Make files public or private in one call. */
+    setAccess: (publicIds: string[], access: StoredFile["access"]): Promise<{ updated: number }> =>
+      this.request("POST", "/files/bulk-access", { publicIds, access }),
+
+    /** Download a file (public or private) into memory with the API key. */
+    download: async (publicId: string): Promise<ArrayBuffer> => (await this.content(publicId)).arrayBuffer(),
+
+    /** Stream a file (public or private) — use for large files. */
+    stream: async (publicId: string): Promise<ReadableStream<Uint8Array>> => {
+      const response = await this.content(publicId);
+      if (!response.body) throw new StorageBoxError(`File "${publicId}" has no content`, response.status);
+      return response.body;
+    },
 
     /** Delete many files by their `id` (not publicId). */
     deleteMany: (ids: string[]): Promise<{ deleted: number }> => this.request("POST", "/files/bulk-delete", { ids }),

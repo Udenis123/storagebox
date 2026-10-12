@@ -9,7 +9,11 @@ export interface StoredFile {
   mime: string;
   ext: string;
   kind: FileKind;
+  /** Bytes in storage — photos and text files are compressed on upload. */
   sizeBytes: number;
+  /** Size as uploaded; present only when compression saved space. */
+  originalSizeBytes?: number;
+  /** SHA-256 of the file as uploaded. */
   checksum: string;
   access: FileAccess;
   width?: number;
@@ -111,6 +115,8 @@ export interface CreateCollectionInput {
 export interface UpdateCollectionInput {
   name?: string;
   access?: FileAccess;
+  /** With `access`: also switch every file in the collection and its sub-collections. */
+  applyToFiles?: boolean;
 }
 
 export interface TransformOptions {

@@ -66,10 +66,34 @@ When `cloudName` is set, every request carries it and StorageBox rejects keys th
 | `files.delete(publicId)` | Delete a file and its cached variants. |
 | `files.deleteMany(ids)` | Delete many files by `id`. |
 | `files.signedUrl(publicId, { expiresIn?, transform?, download? })` | Expiring link — works for private files. |
+| `files.download(publicId)` | The file's bytes as an `ArrayBuffer`, private files included. |
+| `files.stream(publicId)` | The file as a `ReadableStream`, for big files. |
+| `files.setAccess(publicIds, access)` | Make up to 1000 files `PUBLIC` or `PRIVATE` at once. |
 
 Upload options: `collection` (path, created on demand), `collectionId`, `access` (`PUBLIC` | `PRIVATE`), `publicId`, `tags`.
 
 A file's link is `/f/<cloud>/<publicId>.<ext>` and does not include its collection, so renaming or moving collections never breaks links you have already shared.
+
+Photos (JPG, PNG, WebP, AVIF) are optimised on upload and text files (TXT, CSV, JSON, Markdown, SVG) are stored compressed; links always return the full file. `sizeBytes` is the stored size and `originalSizeBytes` the uploaded size when compression saved space.
+
+## Import a big folder
+
+The package ships a command that uploads a whole folder — thousands or millions of files. Sub-folders become collections, files upload in parallel, and running the same command again after a stop continues where it left off without uploading anything twice.
+
+```bash
+export STORAGEBOX_API_KEY=482917365028174 STORAGEBOX_API_SECRET=your_api_secret STORAGEBOX_CLOUD_NAME=acme
+npx storagebox upload ./archive --collection archive --access private --concurrency 16
+```
+
+| Option | Description |
+| --- | --- |
+| `--collection <path>` | Collection for the folder (default: the folder's name). |
+| `--access public\|private` | Default: the collection's access. |
+| `--concurrency <n>` | Parallel uploads, 1–64 (default 8). |
+| `--state <file>` | Progress file (default: `.storagebox-upload-<hash>.json` in the current directory). |
+| `--dry-run` | Count files and bytes without uploading. |
+
+Failed files are listed in `<state file>.errors.log`. Every file is one API request; on a self-hosted server raise `RATE_LIMIT_PER_MINUTE` for big imports — the importer waits and retries when it hits the limit.
 
 ## Collections and usage
 
@@ -81,6 +105,7 @@ await storagebox.collections.create({ name: "2026", parent: "invoices" }); // in
 // Refer to a collection by its path or its id
 await storagebox.collections.rename("invoices", "billing"); // billing/2026 moves with it
 await storagebox.collections.update("billing", { access: "PUBLIC" });
+await storagebox.collections.update("billing", { access: "PRIVATE", applyToFiles: true }); // every file inside too
 await storagebox.collections.delete("billing/2026", { force: true }); // also deletes its files
 
 const usage = await storagebox.usage(); // storage, quota, daily uploads/deliveries
