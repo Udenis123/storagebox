@@ -66,7 +66,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5 sm:px-8">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-8">
         <Link to="/" aria-label="StorageBox home" className="shrink-0">
           <Logo className="[&_img]:size-8 [&>span]:text-lg" />
         </Link>
@@ -77,7 +77,7 @@ export function SiteHeader() {
         </nav>
         <div className="ml-auto flex items-center gap-2 md:ml-0">
           {isAuthenticated ? (
-            <Button className="h-10 rounded-full px-5" render={<Link to={homePathFor(user)} />}>
+            <Button className="h-10 rounded-full px-4 sm:px-5" render={<Link to={homePathFor(user)} />}>
               Dashboard <ArrowRight />
             </Button>
           ) : (
@@ -85,7 +85,7 @@ export function SiteHeader() {
               <Button variant="ghost" className="hidden h-10 rounded-full px-4 sm:inline-flex" render={<Link to="/login" />}>
                 Sign in
               </Button>
-              <Button className="h-10 rounded-full px-5" render={<Link to="/register" />}>
+              <Button className="h-10 rounded-full px-4 sm:px-5" render={<Link to="/register" />}>
                 Get started
               </Button>
             </>

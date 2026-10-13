@@ -1,5 +1,13 @@
 import { File, FileArchive, FileAudio, FileImage, FileText, FileVideo, type LucideIcon } from "lucide-react";
-import type { FileKind, StoredFile } from "./types";
+import type { Collection, FileKind, StoredFile } from "./types";
+
+/** Ids of every collection above the given one, nearest first. */
+export function ancestorIds(collections: Collection[], id: string): string[] {
+  const byId = new Map(collections.map((collection) => [collection.id, collection]));
+  const ids: string[] = [];
+  for (let parentId = byId.get(id)?.parentId; parentId; parentId = byId.get(parentId)?.parentId) ids.push(parentId);
+  return ids;
+}
 
 export const KIND_META: Record<FileKind, { label: string; icon: LucideIcon; tone: string }> = {
   image: { label: "Images", icon: FileImage, tone: "bg-pink-50 text-pink-600" },

@@ -4,6 +4,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ancestorIds } from "@/lib/files";
 import type { Collection } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CollectionDialog, type CollectionDialogState } from "./CollectionDialog";
@@ -30,18 +31,30 @@ type CollectionTreeProps = {
   onShare: (collection: Collection) => void;
 };
 
-const ROW = "flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-base transition-colors";
+const ROW =
+  "flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-base transition-colors has-[button:focus-visible]:ring-2 has-[button:focus-visible]:ring-ring/40";
+const ROW_SELECTED = "bg-primary/10 font-semibold text-primary";
+const ROW_IDLE = "text-foreground hover:bg-muted";
+const BARE_BUTTON = "outline-none";
 
 export function CollectionTree({ selectedId, onSelect, onShare }: CollectionTreeProps) {
   const { data: collections = [], isLoading } = useCollections();
   const [dialog, setDialog] = useState<CollectionDialogState>(null);
   const [toDelete, setToDelete] = useState<Collection | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [revealedId, setRevealedId] = useState<string | null>(null);
   const deleteCollection = useDeleteCollection(() => {
     if (toDelete && selectedId === toDelete.id) onSelect(ALL_FILES);
     setToDelete(null);
   });
   const tree = useMemo(() => buildTree(collections), [collections]);
+
+  const revealKey = collections.length ? selectedId : null;
+  if (revealKey !== revealedId) {
+    setRevealedId(revealKey);
+    const ancestors = ancestorIds(collections, selectedId);
+    if (ancestors.some((id) => !expanded.has(id))) setExpanded(new Set([...expanded, ...ancestors]));
+  }
 
   const toggle = (id: string) =>
     setExpanded((current) => {
@@ -56,22 +69,29 @@ export function CollectionTree({ selectedId, onSelect, onShare }: CollectionTree
     const isExpanded = expanded.has(node.id);
     return (
       <li key={node.id}>
-        <div className={cn(ROW, "group pr-1", isSelected ? "bg-accent text-accent-foreground" : "hover:bg-muted")} style={{ paddingLeft: `${depth * 14 + 4}px` }}>
+        <div className={cn(ROW, "group pr-1", isSelected ? ROW_SELECTED : ROW_IDLE)} style={{ paddingLeft: `${depth * 12 + 2}px` }}>
           <button
             type="button"
             onClick={() => toggle(node.id)}
-            className={cn("flex size-6 shrink-0 items-center justify-center rounded", !node.children.length && "invisible")}
+            className={cn(BARE_BUTTON, "flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-foreground/5", !node.children.length && "invisible")}
             aria-label={isExpanded ? "Collapse" : "Expand"}
           >
             <ChevronRight className={cn("size-4 transition-transform", isExpanded && "rotate-90")} />
           </button>
-          <button type="button" className="flex min-w-0 flex-1 items-center gap-2 py-2" onClick={() => onSelect(node.id)}>
+          <button
+            type="button"
+            className={cn(BARE_BUTTON, "flex min-w-0 flex-1 items-center gap-2 py-2")}
+            onClick={() => onSelect(node.id)}
+            aria-current={isSelected ? "true" : undefined}
+          >
             {isSelected ? <FolderOpen className="size-5 shrink-0" /> : <Folder className="size-5 shrink-0 text-muted-foreground" />}
             <span className="truncate">{node.name}</span>
-            {node.access === "PRIVATE" && <Lock className="size-3.5 shrink-0 text-muted-foreground" />}
+            {node.access === "PRIVATE" && <Lock className="size-3.5 shrink-0 opacity-60" aria-label="Private" />}
             {node.shareUrl && <Link2 className="size-3.5 shrink-0 text-primary" aria-label="Shared" />}
           </button>
-          <span className="text-sm text-muted-foreground">{node.fileCount}</span>
+          <span className={cn("rounded-full px-2 text-xs tabular-nums", isSelected ? "bg-primary/15" : "bg-muted text-muted-foreground")}>
+            {node.fileCount}
+          </span>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Collection actions" />}>
               <MoreHorizontal />
@@ -93,19 +113,24 @@ export function CollectionTree({ selectedId, onSelect, onShare }: CollectionTree
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {isExpanded && node.children.length > 0 && <ul>{node.children.map((child) => renderNode(child, depth + 1))}</ul>}
+        {isExpanded && node.children.length > 0 && <ul className="mt-0.5 grid grid-cols-[minmax(0,1fr)] gap-0.5">{node.children.map((child) => renderNode(child, depth + 1))}</ul>}
       </li>
     );
   };
 
   const fixedRow = (id: string, label: string, Icon: typeof Layers) => (
-    <button type="button" onClick={() => onSelect(id)} className={cn(ROW, "py-2", selectedId === id ? "bg-accent text-accent-foreground" : "hover:bg-muted")}>
+    <button
+      type="button"
+      onClick={() => onSelect(id)}
+      aria-current={selectedId === id ? "true" : undefined}
+      className={cn(ROW, "py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/40", selectedId === id ? ROW_SELECTED : ROW_IDLE)}
+    >
       <Icon className="size-5" /> {label}
     </button>
   );
 
   return (
-    <div className="grid content-start gap-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-2">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Collections</h2>
         <Button variant="outline" size="sm" onClick={() => setDialog({ mode: "create" })}>
@@ -117,7 +142,7 @@ export function CollectionTree({ selectedId, onSelect, onShare }: CollectionTree
       {isLoading ? (
         <Skeleton className="h-24" />
       ) : (
-        <ul className="grid gap-0.5">{tree.map((node) => renderNode(node, 0))}</ul>
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5">{tree.map((node) => renderNode(node, 0))}</ul>
       )}
 
       <CollectionDialog state={dialog} onClose={() => setDialog(null)} />

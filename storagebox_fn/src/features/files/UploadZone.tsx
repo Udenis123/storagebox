@@ -1,6 +1,23 @@
 import { useCallback, useRef, useState, type DragEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, CloudUpload, FolderUp, Globe, HardDrive, Loader2, Lock, Rocket, Upload, X, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronRight,
+  CloudUpload,
+  Folder,
+  FolderInput,
+  FolderOpen,
+  FolderUp,
+  Globe,
+  HardDrive,
+  Inbox,
+  Loader2,
+  Lock,
+  Rocket,
+  Upload,
+  X,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useStorageHealth } from "@/features/storage/hooks";
@@ -16,17 +33,21 @@ import { uploadFile } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 
 type UploadStatus = "uploading" | "done" | "error";
-type UploadTask = { id: string; name: string; size: number; progress: number; status: UploadStatus; error?: string };
+type UploadTask = { id: string; name: string; destination: string; size: number; progress: number; status: UploadStatus; error?: string };
 type AccessChoice = "DEFAULT" | FileAccess;
 
 type UploadZoneProps = {
   collectionId?: string;
-  /** Path of the current collection; folder uploads create sub-collections under it. */
+  /** Path of the destination collection; folder uploads create sub-collections under it. Unset means Unsorted. */
   collectionPath?: string;
-  collectionLabel: string;
   /** Access new files get when no choice is made: the collection's, or public. */
   defaultAccess?: FileAccess;
+  onChangeDestination: () => void;
 };
+
+const UNSORTED_LABEL = "Unsorted";
+
+const displayPath = (path?: string): string => (path ? path.split("/").join(" / ") : UNSORTED_LABEL);
 
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 const CONCURRENT_UPLOADS = 4;
@@ -36,14 +57,14 @@ const ALLOWED_EXTENSIONS = new Set(ALLOWED_FILE_ACCEPT.split(",").map((ext) => e
 
 const extensionOf = (name: string): string => name.slice(name.lastIndexOf(".") + 1).toLowerCase();
 
-function AccessChoiceButton({ isActive, onClick, icon, label }: { isActive: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+function AccessChoiceButton({ isActive, onClick, icon, label }: { isActive: boolean; onClick: () => void; icon: React.ReactNode; label: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={isActive}
       className={cn(
-        "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors [&_svg]:size-4",
+        "flex min-h-9 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors [&_svg]:size-4",
         isActive ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
       )}
     >
@@ -53,7 +74,21 @@ function AccessChoiceButton({ isActive, onClick, icon, label }: { isActive: bool
   );
 }
 
-export function UploadZone({ collectionId, collectionPath, collectionLabel, defaultAccess = "PUBLIC" }: UploadZoneProps) {
+function DestinationPath({ path }: { path?: string }) {
+  const segments = path ? path.split("/") : [UNSORTED_LABEL];
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-1 font-semibold text-foreground">
+      {segments.map((segment, index) => (
+        <span key={`${segment}-${index}`} className="flex min-w-0 items-center gap-1">
+          {index > 0 && <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
+          <span className="truncate">{segment}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function UploadZone({ collectionId, collectionPath, defaultAccess = "PUBLIC", onChangeDestination }: UploadZoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -75,22 +110,36 @@ export function UploadZone({ collectionId, collectionPath, collectionLabel, defa
       const skipped = picked.length - supported.length;
       if (skipped > 0) toast.info(`Skipped ${skipped} file(s) with an unsupported type`);
 
-      const access = accessChoice === "DEFAULT" ? undefined : accessChoice;
-      const queued = supported.map((entry) => ({
-        ...entry,
-        task: { id: crypto.randomUUID(), name: entry.relativePath ?? entry.file.name, size: entry.file.size, progress: 0, status: "uploading" as const },
-      }));
-      setTasks((current) => [...queued.map((entry) => entry.task), ...current]);
+      if (!supported.length) return;
 
-      const runOne = async ({ file, relativePath, task }: (typeof queued)[number]) => {
+      const access = accessChoice === "DEFAULT" ? undefined : accessChoice;
+      const queued = supported.map((entry) => {
+        const collection = entry.relativePath ? folderCollectionPath(collectionPath, entry.relativePath) : undefined;
+        return {
+          ...entry,
+          collection,
+          task: {
+            id: crypto.randomUUID(),
+            name: entry.file.name,
+            destination: displayPath(collection ?? collectionPath),
+            size: entry.file.size,
+            progress: 0,
+            status: "uploading" as const,
+          },
+        };
+      });
+      setTasks((current) => [...queued.map((entry) => entry.task), ...current]);
+      let uploadedCount = 0;
+
+      const runOne = async ({ file, collection, task }: (typeof queued)[number]) => {
         if (file.size > MAX_UPLOAD_BYTES) {
           patchTask(task.id, { status: "error", error: `Larger than ${MAX_UPLOAD_LABEL}` });
           return;
         }
-        const collection = relativePath ? folderCollectionPath(collectionPath, relativePath) : undefined;
         try {
           await uploadFile(file, { collectionId, collection, access }, (progress) => patchTask(task.id, { progress }));
           patchTask(task.id, { status: "done", progress: 100 });
+          uploadedCount += 1;
         } catch (error) {
           const isQuotaError = error instanceof ApiRequestError && error.errorCode === QUOTA_EXCEEDED_CODE;
           patchTask(task.id, { status: "error", error: isQuotaError ? "Not enough storage" : error instanceof Error ? error.message : "Upload failed" });
@@ -105,6 +154,9 @@ export function UploadZone({ collectionId, collectionPath, collectionLabel, defa
         for (let next = pending.shift(); next; next = pending.shift()) await runOne(next);
       });
       await Promise.all(workers);
+      if (uploadedCount) {
+        toast.success(`${uploadedCount.toLocaleString()} file${uploadedCount === 1 ? "" : "s"} uploaded to ${displayPath(collectionPath)}`);
+      }
       await Promise.all([queryKeys.files, queryKeys.collections, queryKeys.usage].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
     },
     [collectionId, collectionPath, accessChoice, queryClient, openUpgrade],
@@ -148,43 +200,69 @@ export function UploadZone({ collectionId, collectionPath, collectionLabel, defa
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         className={cn(
-          "grid gap-3 rounded-xl border-2 border-dashed p-4 transition-colors",
+          "relative overflow-hidden rounded-xl border-2 border-dashed transition-colors",
           isDragging ? "border-primary bg-accent" : "border-border bg-card",
         )}
       >
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b bg-primary/5 px-4 py-3">
+          <span className="flex items-center gap-2 text-sm font-medium text-primary">
+            <FolderInput className="size-5" /> Uploading to
+          </span>
+          <span className="order-last flex min-w-0 basis-full items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm sm:order-none sm:flex-1 sm:basis-0 md:text-base">
+            {collectionPath ? <FolderOpen className="size-4 shrink-0 text-primary" /> : <Inbox className="size-4 shrink-0 text-muted-foreground" />}
+            <DestinationPath path={collectionPath} />
+          </span>
+          <Button variant="outline" size="sm" onClick={onChangeDestination}>
+            Change
+          </Button>
+        </div>
+
+        <div className="flex flex-col items-center gap-4 p-4 text-center sm:flex-row sm:text-left md:p-5">
           <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
             <CloudUpload className="size-6" />
           </span>
-          <div className="grid min-w-52 flex-1 gap-0.5">
-            <span className="text-base font-semibold">Drop files or whole folders here</span>
+          <div className="grid min-w-0 flex-1 gap-0.5">
+            <span className="text-base font-semibold md:text-lg">Drop files or whole folders here</span>
             <span className="text-sm text-muted-foreground">
-              Into <strong className="text-foreground">{collectionLabel}</strong> · sub-folders become collections · up to {MAX_UPLOAD_LABEL} per file
+              Sub-folders become folders inside <strong className="text-foreground">{displayPath(collectionPath)}</strong> · up to {MAX_UPLOAD_LABEL} per file
             </span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => fileInputRef.current?.click()}>
-              <Upload /> Choose files
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+            <Button size="lg" onClick={() => fileInputRef.current?.click()}>
+              <Upload /> Files
             </Button>
-            <Button variant="outline" onClick={() => folderInputRef.current?.click()}>
-              <FolderUp /> Choose folder
+            <Button size="lg" variant="outline" onClick={() => folderInputRef.current?.click()}>
+              <FolderUp /> Folder
             </Button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 border-t pt-3 text-sm">
+
+        <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3 text-sm">
           <span className="text-muted-foreground">New files are</span>
-          <div className="flex gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Access for new files">
+          <div className="grid w-full grid-cols-3 gap-1 rounded-lg bg-muted p-1 sm:flex sm:w-auto" role="group" aria-label="Access for new files">
             <AccessChoiceButton
               isActive={accessChoice === "DEFAULT"}
               onClick={() => setAccessChoice("DEFAULT")}
               icon={defaultAccess === "PRIVATE" ? <Lock /> : <Globe />}
-              label={`Like the collection (${defaultAccess === "PRIVATE" ? "private" : "public"})`}
+              label={
+                <>
+                  Default<span className="hidden sm:inline"> ({defaultAccess === "PRIVATE" ? "private" : "public"})</span>
+                </>
+              }
             />
             <AccessChoiceButton isActive={accessChoice === "PUBLIC"} onClick={() => setAccessChoice("PUBLIC")} icon={<Globe />} label="Public" />
             <AccessChoiceButton isActive={accessChoice === "PRIVATE"} onClick={() => setAccessChoice("PRIVATE")} icon={<Lock />} label="Private" />
           </div>
           <span className="text-xs text-muted-foreground xl:ml-auto">Photos are optimised and text files compressed automatically.</span>
         </div>
+
+        {isDragging && (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center bg-primary/10 backdrop-blur-[1px]">
+            <span className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg md:text-base">
+              <CloudUpload className="size-5" /> Drop to upload into {displayPath(collectionPath)}
+            </span>
+          </div>
+        )}
       </div>
       <input
         ref={fileInputRef}
@@ -233,8 +311,14 @@ export function UploadZone({ collectionId, collectionPath, collectionLabel, defa
                   {task.status === "uploading" && <Loader2 className="size-4 shrink-0 animate-spin text-primary" />}
                   {task.status === "done" && <CheckCircle2 className="size-4 shrink-0 text-tone-success" />}
                   {task.status === "error" && <XCircle className="size-4 shrink-0 text-destructive" />}
-                  <span className="min-w-0 flex-1 truncate">{task.name}</span>
-                  <span className="shrink-0 text-muted-foreground">{task.error ?? formatBytes(task.size)}</span>
+                  <span className="grid min-w-0 flex-1">
+                    <span className="truncate">{task.name}</span>
+                    <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                      <Folder className="size-3 shrink-0" />
+                      <span className="truncate">{task.destination}</span>
+                    </span>
+                  </span>
+                  <span className={cn("shrink-0", task.error ? "text-destructive" : "text-muted-foreground")}>{task.error ?? formatBytes(task.size)}</span>
                 </div>
                 {task.status === "uploading" && (
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted">

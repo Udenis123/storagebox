@@ -34,8 +34,8 @@ export function Pagination({ page, pageCount, pageSize, total, onChange }: Pagin
         <span className="font-semibold text-foreground">{total}</span>
       </p>
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onChange(page - 1)}>
-          <ChevronLeft /> Previous
+        <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onChange(page - 1)} aria-label="Previous page">
+          <ChevronLeft /> <span className="hidden sm:inline">Previous</span>
         </Button>
         {visiblePages(page, pageCount).map((value, index) =>
           value === null ? (
@@ -55,8 +55,8 @@ export function Pagination({ page, pageCount, pageSize, total, onChange }: Pagin
             </Button>
           ),
         )}
-        <Button variant="outline" size="sm" disabled={page === pageCount} onClick={() => onChange(page + 1)}>
-          Next <ChevronRight />
+        <Button variant="outline" size="sm" disabled={page === pageCount} onClick={() => onChange(page + 1)} aria-label="Next page">
+          <span className="hidden sm:inline">Next</span> <ChevronRight />
         </Button>
       </div>
     </nav>

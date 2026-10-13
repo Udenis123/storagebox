@@ -13,6 +13,8 @@ import { useCollections, useDeleteFiles, useSetFilesAccess } from "./hooks";
 
 type BulkActionsProps = { selectedIds: string[]; onClear: () => void };
 
+const LABEL = "hidden sm:inline";
+
 export function BulkActions({ selectedIds, onClear }: BulkActionsProps) {
   const queryClient = useQueryClient();
   const { data: collections = [] } = useCollections();
@@ -48,19 +50,29 @@ export function BulkActions({ selectedIds, onClear }: BulkActionsProps) {
   const count = selectedIds.length;
 
   return (
-    <div className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 pl-4 shadow-md lg:top-4">
+    <div className="sticky top-[4.5rem] z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 pl-4 shadow-md lg:top-4">
       <span className="flex-1 text-base font-semibold">{count} selected</span>
-      <Button variant="outline" disabled={setAccess.isPending} onClick={() => setAccess.mutate({ ids: selectedIds, access: "PUBLIC" })}>
-        <Globe /> Make public
+      <Button
+        variant="outline"
+        disabled={setAccess.isPending}
+        onClick={() => setAccess.mutate({ ids: selectedIds, access: "PUBLIC" })}
+        aria-label="Make public"
+      >
+        <Globe /> <span className={LABEL}>Make public</span>
       </Button>
-      <Button variant="outline" disabled={setAccess.isPending} onClick={() => setAccess.mutate({ ids: selectedIds, access: "PRIVATE" })}>
-        <Lock /> Make private
+      <Button
+        variant="outline"
+        disabled={setAccess.isPending}
+        onClick={() => setAccess.mutate({ ids: selectedIds, access: "PRIVATE" })}
+        aria-label="Make private"
+      >
+        <Lock /> <span className={LABEL}>Make private</span>
       </Button>
-      <Button variant="outline" onClick={() => setIsMoving(true)}>
-        <FolderInput /> Move
+      <Button variant="outline" onClick={() => setIsMoving(true)} aria-label="Move">
+        <FolderInput /> <span className={LABEL}>Move</span>
       </Button>
-      <Button variant="destructive" onClick={() => setIsConfirmingDelete(true)}>
-        <Trash2 /> Delete
+      <Button variant="destructive" onClick={() => setIsConfirmingDelete(true)} aria-label="Delete">
+        <Trash2 /> <span className={LABEL}>Delete</span>
       </Button>
       <Button variant="ghost" size="icon" onClick={onClear} aria-label="Clear selection">
         <X />
