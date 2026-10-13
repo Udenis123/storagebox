@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Folder, FolderOpen, FolderPlus, Inbox, Layers, Link2, Lock, MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen, FolderPlus, Inbox, Layers, Link2, MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -85,15 +85,30 @@ export function CollectionTree({ selectedId, onSelect, onShare }: CollectionTree
             aria-current={isSelected ? "true" : undefined}
           >
             {isSelected ? <FolderOpen className="size-5 shrink-0" /> : <Folder className="size-5 shrink-0 text-muted-foreground" />}
-            <span className="truncate">{node.name}</span>
-            {node.access === "PRIVATE" && <Lock className="size-3.5 shrink-0 opacity-60" aria-label="Private" />}
+            <span className="truncate" title={node.path}>
+              {node.name}
+            </span>
             {node.shareUrl && <Link2 className="size-3.5 shrink-0 text-primary" aria-label="Shared" />}
           </button>
-          <span className={cn("rounded-full px-2 text-xs tabular-nums", isSelected ? "bg-primary/15" : "bg-muted text-muted-foreground")}>
+          <span
+            className={cn(
+              "rounded-full px-2 text-xs tabular-nums lg:group-focus-within:hidden lg:group-hover:hidden",
+              isSelected ? "bg-primary/15" : "bg-muted text-muted-foreground",
+            )}
+          >
             {node.fileCount}
           </span>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Collection actions" />}>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Actions for ${node.name}`}
+                  className="lg:hidden lg:group-focus-within:inline-flex lg:group-hover:inline-flex lg:data-popup-open:inline-flex"
+                />
+              }
+            >
               <MoreHorizontal />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
@@ -101,7 +116,7 @@ export function CollectionTree({ selectedId, onSelect, onShare }: CollectionTree
                 <Share2 /> Share
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setDialog({ mode: "create", parent: node })}>
-                <FolderPlus /> New sub-collection
+                <FolderPlus /> New folder inside
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setDialog({ mode: "rename", collection: node })}>
                 <Pencil /> Edit
@@ -132,7 +147,7 @@ export function CollectionTree({ selectedId, onSelect, onShare }: CollectionTree
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-2">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Collections</h2>
+        <h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Folders</h2>
         <Button variant="outline" size="sm" onClick={() => setDialog({ mode: "create" })}>
           <FolderPlus /> New
         </Button>
