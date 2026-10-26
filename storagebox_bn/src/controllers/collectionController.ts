@@ -39,11 +39,12 @@ export const getSharingHandler = catchAsync(async (req: Request, res: Response) 
 });
 
 export const shareCollectionHandler = catchAsync(async (req: Request, res: Response) => {
-  const result = await setCollectionSharing(currentContext(req), param(req, 'id'), true);
+  const allowDownload = typeof req.body?.allowDownload === 'boolean' ? req.body.allowDownload : undefined;
+  const result = await setCollectionSharing(currentContext(req), param(req, 'id'), { isShared: true, allowDownload });
   sendResponse(res, status.OK, result.message, result.data);
 });
 
 export const unshareCollectionHandler = catchAsync(async (req: Request, res: Response) => {
-  const result = await setCollectionSharing(currentContext(req), param(req, 'id'), false);
+  const result = await setCollectionSharing(currentContext(req), param(req, 'id'), { isShared: false });
   sendResponse(res, status.OK, result.message, result.data);
 });

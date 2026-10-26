@@ -60,5 +60,10 @@ export const deleteCollection = (id: string, isForced: boolean) =>
 
 export const getCollectionSharing = (id: string) => apiFetch<CollectionSharing>(`/collections/${encodeURIComponent(id)}/share`);
 
-export const setCollectionSharing = (id: string, isShared: boolean) =>
-  apiFetch<CollectionSharing>(`/collections/${encodeURIComponent(id)}/share`, { method: isShared ? "POST" : "DELETE" });
+export type ShareCollectionInput = { id: string; isShared: boolean; allowDownload?: boolean };
+
+export const setCollectionSharing = ({ id, isShared, allowDownload }: ShareCollectionInput) =>
+  apiFetch<CollectionSharing>(`/collections/${encodeURIComponent(id)}/share`, {
+    method: isShared ? "POST" : "DELETE",
+    body: isShared && allowDownload !== undefined ? jsonBody({ allowDownload }) : undefined,
+  });

@@ -17,7 +17,7 @@ import type {
   UsageSummary,
 } from "./types.js";
 
-export const DEFAULT_BASE_URL = "https://storagebox.urbinaryhub.com";
+export const DEFAULT_BASE_URL = "https://storagebox.urbinaryhub.rw";
 
 /** Every option falls back to its `STORAGEBOX_*` environment variable when omitted. */
 export interface StorageBoxConfig {
@@ -185,7 +185,8 @@ export class StorageBox {
     delete: (ref: string, options: { force?: boolean } = {}): Promise<void> =>
       this.request("DELETE", `/collections/${encodeURIComponent(ref)}${queryString({ force: options.force })}`),
     /** Public gallery link for the collection and its sub-collections; private files stay hidden. Reuses the existing link. */
-    share: (ref: string): Promise<CollectionSharing> => this.request("POST", `/collections/${encodeURIComponent(ref)}/share`),
+    share: (ref: string, options: { allowDownload?: boolean } = {}): Promise<CollectionSharing> =>
+      this.request("POST", `/collections/${encodeURIComponent(ref)}/share`, options),
     /** Turns the gallery link off; sharing again issues a new link. */
     unshare: (ref: string): Promise<CollectionSharing> => this.request("DELETE", `/collections/${encodeURIComponent(ref)}/share`),
   };

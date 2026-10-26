@@ -2,7 +2,9 @@ import { ExternalLink, Globe, Link2, Link2Off, Loader2, Lock, Share2 } from "luc
 import { CopyField } from "@/components/shared/CopyField";
 import { DialogHeading } from "@/components/shared/FormDialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Collection } from "@/lib/types";
 import { useCollectionSharing, useSetCollectionSharing, useUpdateCollection } from "./hooks";
@@ -15,8 +17,15 @@ export function ShareCollectionDialog({ collection, onClose }: ShareCollectionDi
   const makePublic = useUpdateCollection(() => void sharing.refetch());
 
   const shareUrl = sharing.data?.collection.shareUrl;
+  const allowDownload = sharing.data?.collection.shareAllowDownload ?? true;
   const privateCount = sharing.data?.privateFileCount ?? 0;
-  const toggle = (isShared: boolean) => collection && setSharing.mutate({ id: collection.id, isShared }, { onSuccess: () => void sharing.refetch() });
+
+  const toggleShare = (isShared: boolean) =>
+    collection && setSharing.mutate({ id: collection.id, isShared, allowDownload }, { onSuccess: () => void sharing.refetch() });
+
+  const toggleDownload = (next: boolean) =>
+    collection &&
+    setSharing.mutate({ id: collection.id, isShared: true, allowDownload: next }, { onSuccess: () => void sharing.refetch() });
 
   return (
     <Dialog open={Boolean(collection)} onOpenChange={(open) => !open && onClose()}>
@@ -25,22 +34,36 @@ export function ShareCollectionDialog({ collection, onClose }: ShareCollectionDi
           <DialogHeading
             icon={<Share2 />}
             title={`Share “${collection?.name ?? ""}”`}
-            description="One link opens a gallery of everything in this collection and its sub-collections."
+            description="One link opens a gallery of everything in this folder and its sub-folders."
           />
 
           {sharing.isLoading ? (
             <Skeleton className="h-24" />
           ) : shareUrl ? (
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               <div className="flex items-center gap-2 text-sm font-medium text-tone-success">
                 <Link2 className="size-4" /> Anyone with this link can view the gallery
               </div>
               <CopyField value={shareUrl} canOpen />
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-muted/30 p-3">
+                <Checkbox
+                  checked={allowDownload}
+                  disabled={setSharing.isPending}
+                  onCheckedChange={(checked) => toggleDownload(checked === true)}
+                  className="mt-0.5"
+                />
+                <span className="grid gap-0.5">
+                  <Label className="cursor-pointer text-sm font-medium">Allow downloads</Label>
+                  <span className="text-sm text-muted-foreground">
+                    When on, each file shows a download icon on hover. When off, visitors can only view.
+                  </span>
+                </span>
+              </label>
               <div className="flex flex-wrap gap-2">
                 <Button render={<a href={shareUrl} target="_blank" rel="noreferrer" />}>
                   <ExternalLink /> Open gallery
                 </Button>
-                <Button variant="outline" disabled={setSharing.isPending} onClick={() => toggle(false)}>
+                <Button variant="outline" disabled={setSharing.isPending} onClick={() => toggleShare(false)}>
                   {setSharing.isPending ? <Loader2 className="animate-spin" /> : <Link2Off />} Stop sharing
                 </Button>
               </div>
@@ -48,10 +71,10 @@ export function ShareCollectionDialog({ collection, onClose }: ShareCollectionDi
           ) : (
             <div className="grid gap-3 rounded-lg border bg-muted/30 p-4">
               <p className="text-sm text-muted-foreground">
-                Visitors don&apos;t need an account. They can browse photos, play videos, read documents and download files. Turning sharing off
-                breaks the link straight away.
+                Visitors don&apos;t need an account. They can browse photos, play videos and read documents. You choose whether they can download
+                files. Turning sharing off breaks the link straight away.
               </p>
-              <Button className="justify-self-start" disabled={setSharing.isPending} onClick={() => toggle(true)}>
+              <Button className="justify-self-start" disabled={setSharing.isPending} onClick={() => toggleShare(true)}>
                 {setSharing.isPending ? <Loader2 className="animate-spin" /> : <Globe />} Create share link
               </Button>
             </div>

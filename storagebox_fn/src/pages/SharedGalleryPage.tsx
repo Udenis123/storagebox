@@ -201,7 +201,7 @@ export default function SharedGalleryPage() {
             {columns.map((column, columnIndex) => (
               <div key={columnIndex} className="grid min-w-0 flex-1 gap-3 md:gap-4">
                 {column.map(({ file, index }) => (
-                  <GalleryTile key={file.id} file={file} onOpen={() => setOpenIndex(index)} />
+                  <GalleryTile key={file.id} file={file} onOpen={() => setOpenIndex(index)} canDownload={Boolean(gallery?.allowDownload)} />
                 ))}
               </div>
             ))}
@@ -213,7 +213,7 @@ export default function SharedGalleryPage() {
         </div>
       </main>
 
-      <GalleryLightbox files={files} index={openIndex} onChange={onLightboxChange} />
+      <GalleryLightbox files={files} index={openIndex} onChange={onLightboxChange} canDownload={Boolean(gallery?.allowDownload)} />
     </div>
   );
 }

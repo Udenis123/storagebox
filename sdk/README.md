@@ -1,6 +1,6 @@
 # storagebox
 
-Official client for [StorageBox](https://storagebox.urbinaryhub.com) — store files, organise them in collections, transform images on the fly and share them with permanent or expiring links. Zero dependencies; works in Node 18+, Bun, Deno and edge runtimes, with both `import` and `require`.
+Official client for [StorageBox](https://storagebox.urbinaryhub.rw) — store files, organise them in collections, transform images on the fly and share them with permanent or expiring links. Zero dependencies; works in Node 18+, Bun, Deno and edge runtimes, with both `import` and `require`.
 
 > Use it on your **server**. The API secret must never be shipped to a browser.
 
@@ -12,7 +12,7 @@ npm install storagebox
 
 ## Configure
 
-[Request an account](https://storagebox.urbinaryhub.com/register). Once an administrator approves it, open **API Keys** in the dashboard, create a key and copy the three values into your `.env`:
+[Request an account](https://storagebox.urbinaryhub.rw/register). Once an administrator approves it, open **API Keys** in the dashboard, create a key and copy the three values into your `.env`:
 
 ```bash
 STORAGEBOX_CLOUD_NAME=acme
@@ -45,7 +45,7 @@ const storagebox = new StorageBox({
   cloudName: "acme",
   apiKey: "482917365028174",
   apiSecret: process.env.MY_SECRET,
-  baseUrl: "https://storagebox.urbinaryhub.com", // default
+  baseUrl: "https://storagebox.urbinaryhub.rw", // default
 });
 ```
 
@@ -108,7 +108,7 @@ await storagebox.collections.update("billing", { access: "PUBLIC" });
 await storagebox.collections.update("billing", { access: "PRIVATE", applyToFiles: true }); // every file inside too
 
 // Public gallery link for a collection and its sub-collections (private files stay hidden)
-const { collection } = await storagebox.collections.share("events/2026");
+const { collection } = await storagebox.collections.share("events/2026", { allowDownload: true });
 console.log(collection.shareUrl);
 await storagebox.collections.unshare("events/2026");
 await storagebox.collections.delete("billing/2026", { force: true }); // also deletes its files
@@ -120,7 +120,7 @@ const usage = await storagebox.usage(); // storage, quota, daily uploads/deliver
 
 ```ts
 storagebox.url(file, { width: 400, height: 400, crop: "fill", format: "webp" });
-// → https://storagebox.urbinaryhub.com/f/acme/w_400,h_400,c_fill,f_webp/photo_ab12cd.jpg
+// → https://storagebox.urbinaryhub.rw/f/acme/w_400,h_400,c_fill,f_webp/photo_ab12cd.jpg
 
 await storagebox.files.signedUrl(privateFile.publicId, { transform: "w_800,f_avif", expiresIn: 600 });
 ```

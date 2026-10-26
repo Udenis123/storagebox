@@ -304,7 +304,7 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
           </p>
         </Prose>
         <CodeBlock
-          code={`const { collection, privateFileCount } = await storagebox.collections.share("events/2026");\nconsole.log(collection.shareUrl); // anyone with this link can view the gallery\n\nawait storagebox.collections.unshare("events/2026"); // the link stops working\n\n// REST: POST /v1/collections/:ref/share · DELETE /v1/collections/:ref/share`}
+          code={`const { collection, privateFileCount } = await storagebox.collections.share("events/2026", { allowDownload: true });\nconsole.log(collection.shareUrl); // anyone with this link can view the gallery\nconsole.log(collection.shareAllowDownload); // downloads on hover when true\n\nawait storagebox.collections.share("events/2026", { allowDownload: false }); // view only\nawait storagebox.collections.unshare("events/2026"); // the link stops working\n\n// REST: POST /v1/collections/:ref/share { allowDownload? } · DELETE /v1/collections/:ref/share`}
         />
       </DocSection>
 

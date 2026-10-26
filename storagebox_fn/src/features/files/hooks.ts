@@ -101,6 +101,6 @@ export function useCollectionSharing(id: string | null) {
 }
 
 export const useSetCollectionSharing = () =>
-  useApiMutation(({ id, isShared }: { id: string; isShared: boolean }) => setCollectionSharing(id, isShared), {
+  useApiMutation(setCollectionSharing, {
     invalidate: [queryKeys.collections],
   });

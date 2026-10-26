@@ -47,6 +47,8 @@ export type Collection = {
   access: FileAccess;
   /** Public gallery link; present while the collection is shared. */
   shareUrl?: string;
+  /** When shared, visitors may download files from the gallery. */
+  shareAllowDownload: boolean;
   fileCount: number;
   createdAt: string;
 };
@@ -62,6 +64,7 @@ export type GalleryFolder = { id: string; name: string; fileCount: number; cover
 export type Gallery = {
   name: string;
   cloudName: string;
+  allowDownload: boolean;
   breadcrumb: { id: string; name: string }[];
   folders: GalleryFolder[];
   files: Paginated<StoredFile>;

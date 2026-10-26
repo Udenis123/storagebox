@@ -40,6 +40,7 @@ const collectionSchema = {
     parentId: { type: 'string' },
     access: { type: 'string', enum: ['PUBLIC', 'PRIVATE'] },
     shareUrl: { type: 'string', description: 'Public gallery link, present while shared' },
+    shareAllowDownload: { type: 'boolean', description: 'When shared, gallery visitors may download files' },
     fileCount: { type: 'integer' },
   },
 };
@@ -266,6 +267,19 @@ export const openApiDocument = {
       post: {
         tags: ['Collections'],
         summary: 'Share as a public gallery (private files stay hidden); keeps an existing link',
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  allowDownload: { type: 'boolean', description: 'Let gallery visitors download files (default: keep current / true on first share)' },
+                },
+              },
+            },
+          },
+        },
         responses: { 200: ok(sharingSchema) },
       },
       delete: { tags: ['Collections'], summary: 'Stop sharing; the gallery link stops working', responses: { 200: ok(sharingSchema) } },

@@ -35,6 +35,8 @@ export interface Collection {
   access: FileAccess;
   /** Public gallery link; present while the collection is shared. */
   shareUrl?: string;
+  /** When shared, gallery visitors may download files. */
+  shareAllowDownload: boolean;
   fileCount: number;
   createdAt: string;
 }

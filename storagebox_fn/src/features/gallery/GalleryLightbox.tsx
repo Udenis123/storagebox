@@ -11,6 +11,7 @@ type GalleryLightboxProps = {
   files: StoredFile[];
   index: number | null;
   onChange: (index: number | null) => void;
+  canDownload: boolean;
 };
 
 function Stage({ file }: { file: StoredFile }) {
@@ -31,7 +32,7 @@ function Stage({ file }: { file: StoredFile }) {
   return <iframe key={file.id} src={embeddedViewerUrl(url)} title={file.originalName} className="size-full max-w-5xl rounded-lg bg-white" />;
 }
 
-export function GalleryLightbox({ files, index, onChange }: GalleryLightboxProps) {
+export function GalleryLightbox({ files, index, onChange, canDownload }: GalleryLightboxProps) {
   const file = index === null ? undefined : files[index];
   const hasPrevious = index !== null && index > 0;
   const hasNext = index !== null && index < files.length - 1;
@@ -64,12 +65,20 @@ export function GalleryLightbox({ files, index, onChange }: GalleryLightboxProps
             {file.width && file.height ? ` · ${file.width} × ${file.height}` : ""}
           </span>
         </div>
-        <a href={file.url} target="_blank" rel="noreferrer" className="grid size-10 place-items-center rounded-lg hover:bg-white/10" aria-label="Open original">
-          <ExternalLink className="size-5" />
-        </a>
-        <a href={downloadUrl(file.url)} className="flex h-10 items-center gap-2 rounded-lg bg-white px-3 text-sm font-medium text-slate-900 hover:bg-white/90">
-          <Download className="size-4" /> Download
-        </a>
+        {canDownload && (
+          <>
+            <a href={file.url} target="_blank" rel="noreferrer" className="grid size-10 place-items-center rounded-lg hover:bg-white/10" aria-label="Open original">
+              <ExternalLink className="size-5" />
+            </a>
+            <a
+              href={downloadUrl(file.url)}
+              download={file.originalName}
+              className="flex h-10 items-center gap-2 rounded-lg bg-white px-3 text-sm font-medium text-slate-900 hover:bg-white/90"
+            >
+              <Download className="size-4" /> Download
+            </a>
+          </>
+        )}
         <button type="button" onClick={() => onChange(null)} className="grid size-10 place-items-center rounded-lg hover:bg-white/10" aria-label="Close">
           <X className="size-6" />
         </button>

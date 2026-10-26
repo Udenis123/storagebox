@@ -8,7 +8,7 @@ import { tileAspect } from "./masonry";
 /** Sized for a ~400 px column on high-density screens. */
 const TILE_TRANSFORM = "w_800,q_80,f_webp";
 
-export function GalleryTile({ file, onOpen }: { file: StoredFile; onOpen: () => void }) {
+export function GalleryTile({ file, onOpen, canDownload }: { file: StoredFile; onOpen: () => void; canDownload: boolean }) {
   const isPhoto = file.kind === "image" && isTransformable(file) && file.url;
   return (
     <figure className="group relative overflow-hidden rounded-xl bg-muted" style={{ aspectRatio: tileAspect(file) }}>
@@ -37,9 +37,11 @@ export function GalleryTile({ file, onOpen }: { file: StoredFile; onOpen: () => 
             {file.ext.toUpperCase()} · {formatBytes(file.sizeBytes)}
           </span>
         </span>
-        {file.url && (
+        {canDownload && file.url && (
           <a
             href={downloadUrl(file.url)}
+            download={file.originalName}
+            onClick={(event) => event.stopPropagation()}
             className="pointer-events-auto grid size-9 shrink-0 place-items-center rounded-lg bg-white/90 text-slate-900 shadow transition-colors hover:bg-white"
             aria-label={`Download ${file.originalName}`}
           >

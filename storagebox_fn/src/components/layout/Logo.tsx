@@ -1,12 +1,16 @@
 import { cn } from "@/lib/utils";
 
-export function Logo({ className, isLight = false }: { className?: string; isLight?: boolean }) {
+type LogoProps = { className?: string; isLight?: boolean; isCompact?: boolean };
+
+export function Logo({ className, isLight = false, isCompact = false }: LogoProps) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <img src="/logo.svg" alt="" className="size-9" />
-      <span className={cn("text-xl font-extrabold tracking-tight", isLight ? "text-white" : "text-foreground")}>
-        Storage<span className={isLight ? "text-indigo-200" : "text-primary"}>Box</span>
-      </span>
+      <img src="/logo.svg" alt="" className="size-9 shrink-0" />
+      {!isCompact && (
+        <span className={cn("text-xl font-extrabold tracking-tight", isLight ? "text-white" : "text-foreground")}>
+          Storage<span className={isLight ? "text-indigo-200" : "text-primary"}>Box</span>
+        </span>
+      )}
     </span>
   );
 }

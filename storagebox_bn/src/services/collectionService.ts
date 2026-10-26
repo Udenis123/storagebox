@@ -205,11 +205,34 @@ export async function getCollectionSharing(ctx: AccountContext, ref: string): Pr
   return { message: 'Sharing retrieved', data: await sharingResult(ctx, await findCollection(ctx, ref)) };
 }
 
+export type ShareOptions = {
+  isShared: boolean;
+  /** Whether gallery visitors may download files. Defaults to the collection's current setting. */
+  allowDownload?: boolean;
+};
+
 /** Sharing keeps the existing link; turning it off and on again issues a new one. */
-export async function setCollectionSharing(ctx: AccountContext, ref: string, isShared: boolean): Promise<ServiceResult<CollectionSharing>> {
+export async function setCollectionSharing(ctx: AccountContext, ref: string, options: ShareOptions): Promise<ServiceResult<CollectionSharing>> {
   const collection = await findCollection(ctx, ref);
+  const { isShared, allowDownload } = options;
+  if (isShared && collection.access === FileAccess.PRIVATE) {
+    throw new ApiError(
+      status.CONFLICT,
+      'This folder is private — make it public before sharing a link',
+      ERROR_CODES.COLLECTION_PRIVATE,
+    );
+  }
   const shareToken = isShared ? (collection.shareToken ?? randomBytes(SHARE_TOKEN_BYTES).toString('base64url')) : null;
-  const updated = await prisma.collection.update({ where: { id: collection.id }, data: { shareToken } });
-  logActivity(ctx, isShared ? 'collection.shared' : 'collection.unshared', updated.path);
-  return { message: isShared ? 'Collection shared' : 'Sharing turned off', data: await sharingResult(ctx, updated) };
+  const wasShared = Boolean(collection.shareToken);
+  const updated = await prisma.collection.update({
+    where: { id: collection.id },
+    data: {
+      shareToken,
+      ...(allowDownload !== undefined && { shareAllowDownload: allowDownload }),
+    },
+  });
+  const action = !isShared ? 'collection.unshared' : wasShared ? 'collection.share_updated' : 'collection.shared';
+  logActivity(ctx, action, updated.path);
+  const message = !isShared ? 'Sharing turned off' : wasShared ? 'Sharing updated' : 'Collection shared';
+  return { message, data: await sharingResult(ctx, updated) };
 }

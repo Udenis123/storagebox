@@ -37,6 +37,8 @@ export const toCollectionDto = (collection: Collection, fileCount: number): Coll
   parentId: collection.parentId ?? undefined,
   access: collection.access,
   shareUrl: collection.shareToken ? `${config.appUrl}/s/${collection.shareToken}` : undefined,
+  shareAllowDownload: collection.shareAllowDownload,
+  isShareBlocked: Boolean(collection.shareToken) && collection.access === FileAccess.PRIVATE,
   fileCount,
   createdAt: collection.createdAt,
 });

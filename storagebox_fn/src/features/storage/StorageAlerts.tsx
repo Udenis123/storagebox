@@ -18,12 +18,31 @@ function useHasPendingRequest(): boolean {
 }
 
 /** Sidebar usage meter; turns amber / red as the account fills up and offers an upgrade. */
-export function StorageMeter() {
+export function StorageMeter({ isCompact = false }: { isCompact?: boolean }) {
   const health = useStorageHealth();
   const { openUpgrade } = useStorageUpgrade();
   const isPending = useHasPendingRequest();
   if (!health) return null;
   const isHigh = health.level !== "ok";
+
+  if (isCompact) {
+    return (
+      <button
+        type="button"
+        onClick={openUpgrade}
+        title={`Storage: ${formatBytes(health.usedBytes)} of ${formatBytes(health.quotaBytes)}`}
+        aria-label={`Storage ${Math.round(health.percent)}% used. Upgrade storage`}
+        className={cn(
+          "grid justify-items-center gap-1 rounded-xl border px-1 py-2 text-xs font-semibold transition-colors hover:bg-muted",
+          isHigh ? "border-tone-warning/30 bg-tone-warning-bg/60" : "bg-muted/40",
+          health.level === "full" && "text-destructive",
+        )}
+      >
+        <HardDrive className="size-4" />
+        {Math.round(health.percent)}%
+      </button>
+    );
+  }
 
   return (
     <div className={cn("grid gap-2 rounded-xl border p-3", isHigh ? "border-tone-warning/30 bg-tone-warning-bg/60" : "bg-muted/40")}>

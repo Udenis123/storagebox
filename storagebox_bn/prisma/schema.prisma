@@ -101,6 +101,8 @@ model Collection {
   access    FileAccess @default(PUBLIC)
   /// Secret part of the public gallery link (`/s/<token>`); null when the collection is not shared.
   shareToken String?   @unique
+  /// When the gallery is shared, visitors may download files (hover icon / lightbox).
+  shareAllowDownload Boolean @default(true)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 

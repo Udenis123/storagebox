@@ -35,6 +35,8 @@ const toGalleryFile = ({ checksum: _checksum, collectionId: _collectionId, colle
 export interface GalleryDto {
   name: string;
   cloudName: string;
+  /** Owner turned downloads on for this gallery. */
+  allowDownload: boolean;
   /** From the shared collection down to the open folder. */
   breadcrumb: { id: string; name: string }[];
   folders: GalleryFolder[];
@@ -46,16 +48,19 @@ const notFound = () => new ApiError(status.NOT_FOUND, 'This gallery does not exi
 const publicFilesIn = (accountId: string, path: string): Prisma.FileWhereInput => ({
   accountId,
   access: FileAccess.PUBLIC,
-  collection: subtreeFilter(accountId, path),
+  collection: { ...subtreeFilter(accountId, path), access: FileAccess.PUBLIC },
 });
 
-/** Anyone with the link sees the public files of a shared collection and its sub-collections; private files stay hidden. */
+/**
+ * Anyone with the link sees the public files of a shared collection and its public sub-collections.
+ * Making the shared collection (or a folder on the way down) private blocks the link without deleting it.
+ */
 export async function getSharedGallery(shareToken: string, query: GalleryQuery): Promise<GalleryDto> {
   const root = await prisma.collection.findUnique({
     where: { shareToken },
     include: { account: { select: { cloudName: true, isSuspended: true } } },
   });
-  if (!root || root.account.isSuspended) throw notFound();
+  if (!root || root.account.isSuspended || root.access !== FileAccess.PUBLIC) throw notFound();
   const { accountId } = root;
   const { cloudName } = root.account;
 
@@ -66,6 +71,10 @@ export async function getSharedGallery(shareToken: string, query: GalleryQuery):
 
   const relativeSegments = current.path.slice(root.path.length).split('/').filter(Boolean);
   const breadcrumbPaths = relativeSegments.map((_, index) => [root.path, ...relativeSegments.slice(0, index + 1)].join('/'));
+  const hasPrivateStep = await prisma.collection.count({
+    where: { accountId, path: { in: breadcrumbPaths }, access: FileAccess.PRIVATE },
+  });
+  if (hasPrivateStep > 0) throw notFound();
   const fileWhere: Prisma.FileWhereInput = {
     ...publicFilesIn(accountId, current.path),
     ...(query.kind && { ext: { in: extensionsForKind(query.kind) } }),
@@ -73,7 +82,11 @@ export async function getSharedGallery(shareToken: string, query: GalleryQuery):
 
   const [ancestors, children, files, total] = await Promise.all([
     prisma.collection.findMany({ where: { accountId, path: { in: breadcrumbPaths } }, select: { id: true, name: true, path: true } }),
-    prisma.collection.findMany({ where: { parentId: current.id }, orderBy: { name: 'asc' }, select: { id: true, name: true, path: true } }),
+    prisma.collection.findMany({
+      where: { parentId: current.id, access: FileAccess.PUBLIC },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, path: true },
+    }),
     prisma.file.findMany({
       where: fileWhere,
       orderBy: { createdAt: 'desc' },
@@ -98,6 +111,7 @@ export async function getSharedGallery(shareToken: string, query: GalleryQuery):
   return {
     name: root.name,
     cloudName,
+    allowDownload: root.shareAllowDownload,
     breadcrumb: [root, ...breadcrumbPaths.map((path) => ancestorByPath.get(path)).filter((item) => item !== undefined)].map(({ id, name }) => ({ id, name })),
     folders: folders.filter((folder) => folder.fileCount > 0),
     files: { items: files.map((file) => toGalleryFile(toFileDto(file, cloudName))), total, page: query.page, pageSize: query.pageSize },

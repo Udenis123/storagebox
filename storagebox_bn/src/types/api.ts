@@ -53,6 +53,10 @@ export interface CollectionDto {
   access: FileAccess;
   /** Public gallery link; present while the collection is shared. */
   shareUrl?: string;
+  /** When shared, visitors may download files from the gallery. */
+  shareAllowDownload: boolean;
+  /** True when the collection is shared but private, so the link answers "not found" until it is public again. */
+  isShareBlocked: boolean;
   fileCount: number;
   createdAt: Date;
 }

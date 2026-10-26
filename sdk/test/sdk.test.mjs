@@ -44,7 +44,7 @@ test("reads credentials from the environment and sends the cloud name", async (t
     return new Response(JSON.stringify({ status: "success", message: "ok", data: { items: [], total: 0 } }));
   };
   await new StorageBox({ fetch: fakeFetch }).files.list();
-  assert.equal(request.url, "https://storagebox.urbinaryhub.com/v1/files");
+  assert.equal(request.url, "https://storagebox.urbinaryhub.rw/v1/files");
   assert.equal(request.headers.authorization, `Basic ${btoa("482917365028174:s3cret")}`);
   assert.equal(request.headers["x-cloud-name"], "acme");
 });
