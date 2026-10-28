@@ -34,7 +34,9 @@ COPY --from=build --chown=storagebox:storagebox /app/dist ./dist
 COPY --from=build --chown=storagebox:storagebox /app/prisma ./prisma
 COPY --from=build --chown=storagebox:storagebox /app/package.json ./package.json
 COPY --chown=storagebox:storagebox docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh \
+  && mkdir -p /app/logs \
+  && chown storagebox:storagebox /app/logs
 
 USER storagebox
 EXPOSE 4200
