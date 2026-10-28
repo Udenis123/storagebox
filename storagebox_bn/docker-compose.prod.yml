@@ -1,0 +1,114 @@
+# Production stack for the StorageBox API + datastores.
+#
+# Images are built and pushed by CI (.github/workflows/ci.yml), not here —
+# this file only pulls them. Postgres, Valkey and RustFS use public images.
+#
+# On the server (once):
+#   docker login ghcr.io -u Udenis123 -p "$GH_PAT"
+#
+# Deploy:
+#   cp .env.production.example .env.production   # fill secrets
+#   docker compose -f docker-compose.prod.yml --env-file .env.production pull
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-storagebox}
+      POSTGRES_USER: ${POSTGRES_USER:-storagebox}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - storagebox-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-storagebox} -d ${POSTGRES_DB:-storagebox}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: always
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - storagebox-valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  rustfs:
+    image: rustfs/rustfs:${RUSTFS_IMAGE_TAG:-latest}
+    restart: always
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY in .env.production}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY in .env.production}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_OBS_LOGGER_LEVEL: error
+      RUSTFS_CORS_ALLOWED_ORIGINS: "*"
+    command: ["/data"]
+    volumes:
+      - storagebox-rustfs:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:9000/health >/dev/null 2>&1 || curl -fsS http://127.0.0.1:9000/health >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  api:
+    image: ghcr.io/udenis123/storagebox-api:${IMAGE_TAG:-latest}
+    restart: always
+    env_file: .env.production
+    environment:
+      # Inside the compose network, reach datastores by service name.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-storagebox}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-storagebox}
+      VALKEY_URL: redis://valkey:6379
+      S3_ENDPOINT: http://rustfs:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-storagebox}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      PORT: "4200"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      rustfs:
+        condition: service_healthy
+    ports:
+      - "${API_HOST_PORT:-4200}:4200"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  storagebox-postgres:
+  storagebox-valkey:
+  storagebox-rustfs:

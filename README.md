@@ -82,10 +82,43 @@ cd storagebox_bn && ./scripts/smoke.sh  # end-to-end against the running API and
 cd sdk && npm test                      # SDK unit tests (+ live test when LIVE_STORAGEBOX_* are set)
 ```
 
+## Production (GHCR + docker compose)
+
+CI on `main` builds and pushes:
+
+| Image | Registry |
+| --- | --- |
+| API | `ghcr.io/udenis123/storagebox-api:latest` |
+| Dashboard | `ghcr.io/udenis123/storagebox-web:latest` |
+
+### API + Postgres + Valkey + RustFS (on the server)
+
+```bash
+cd storagebox_bn
+cp .env.production.example .env.production   # fill secrets, PUBLIC_URL, APP_URL, CORS_ORIGINS
+docker login ghcr.io -u Udenis123 -p "$GH_PAT"   # once if the packages are private
+docker compose -f docker-compose.prod.yml --env-file .env.production pull
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+```
+
+The API container runs `prisma migrate deploy` on start, then listens on `${API_HOST_PORT:-4200}`.
+
+### Dashboard (on the server)
+
+```bash
+cd storagebox_fn
+# optional: IMAGE_TAG=latest WEB_HOST_PORT=3200
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Put nginx/Caddy in front for TLS. Point `storagebox.urbinaryhub.rw` at the dashboard; proxy `/v1`, `/api`, `/f`, `/public`, `/docs` and `/health` to the API (or use a separate API host and set `VITE_STORAGEBOX_API_URL` / `PUBLIC_URL` accordingly).
+
 ## Production notes
 
 - Set `NODE_ENV=production`. This turns on SSRF protection for URL imports, which blocks private and internal addresses.
 - Set `PUBLIC_URL` to the public origin of the API, and add the dashboard origin to `CORS_ORIGINS`.
 - Use strong, stable values for `JWT_SECRET` and `SIGNING_SECRET`. Rotating `SIGNING_SECRET` invalidates every signed link.
 - Put a CDN in front of `/f/*`. Public responses send `Cache-Control` and `ETag` headers and support Range requests.
-- Change the RustFS credentials in `docker-compose.yml` and `.env`.
+- Change the RustFS credentials in `.env.production` (and local `docker-compose.yml` for development).
+- Raise nginx `client_max_body_size` on the API reverse proxy to match `MAX_UPLOAD_MB`.

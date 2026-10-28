@@ -6,13 +6,17 @@ import { StatCard, UsageBar } from "@/components/shared/StatCard";
 import { ErrorDisplay, PageSkeleton } from "@/components/shared/States";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { ActivityChart, StorageByKindChart } from "@/features/developer/UsageCharts";
+import { lazy, Suspense } from "react";
 import { RecentFiles } from "@/features/files/RecentFiles";
 import { useUsage } from "@/features/developer/hooks";
 import { useStorageUpgrade } from "@/features/storage/upgradeContext";
 import { credentialsEnv } from "@/features/developer/credentials";
 import { SDK_PACKAGE } from "@/lib/constants";
 import { formatBytes, percentOf } from "@/lib/format";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const ActivityChart = lazy(() => import("@/features/developer/UsageCharts").then((m) => ({ default: m.ActivityChart })));
+const StorageByKindChart = lazy(() => import("@/features/developer/UsageCharts").then((m) => ({ default: m.StorageByKindChart })));
 
 export default function OverviewPage() {
   const { user } = useAuth();
@@ -75,9 +79,13 @@ console.log(file.url);`;
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2">
-          <ActivityChart daily={usage.daily} />
+          <Suspense fallback={<Skeleton className="h-72" />}>
+            <ActivityChart daily={usage.daily} />
+          </Suspense>
         </div>
-        <StorageByKindChart byKind={usage.byKind} />
+        <Suspense fallback={<Skeleton className="h-72" />}>
+          <StorageByKindChart byKind={usage.byKind} />
+        </Suspense>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">

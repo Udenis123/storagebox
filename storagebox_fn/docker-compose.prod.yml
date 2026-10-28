@@ -1,0 +1,24 @@
+# Production stack for the StorageBox dashboard (static nginx image).
+#
+# The image is built and pushed by CI (.github/workflows/ci.yml).
+# VITE_STORAGEBOX_API_URL is baked in at build time — set it in CI secrets /
+# workflow inputs, not here.
+#
+# On the server (once):
+#   docker login ghcr.io -u Udenis123 -p "$GH_PAT"
+#
+# Deploy:
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+
+services:
+  web:
+    image: ghcr.io/udenis123/storagebox-web:${IMAGE_TAG:-latest}
+    restart: always
+    ports:
+      - "${WEB_HOST_PORT:-3200}:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

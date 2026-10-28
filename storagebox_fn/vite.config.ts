@@ -8,5 +8,25 @@ export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   server: { port: 3200, strictPort: true },
   preview: { port: 3200 },
-  build: { chunkSizeWarningLimit: 600 },
+  build: {
+    target: "es2020",
+    cssCodeSplit: true,
+    sourcemap: false,
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("recharts") || id.includes("d3-")) return "charts";
+          if (id.includes("pdfjs-dist") || id.includes("docx-preview") || id.includes("pptx-preview") || id.includes("xlsx")) {
+            return "office";
+          }
+          if (id.includes("@tanstack") || id.includes("react-router") || id.includes("react-hook-form") || id.includes("zod")) {
+            return "app-vendor";
+          }
+          if (id.includes("react-dom") || id.includes("/react/")) return "react";
+        },
+      },
+    },
+  },
 });
