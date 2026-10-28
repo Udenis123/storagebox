@@ -34,6 +34,7 @@ jobs:
       - name: Test
         run: npx jest --runInBand
 
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
@@ -48,6 +49,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: storagebox_bn
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' }}
           tags: |
             ghcr.io/udenis123/storagebox-api:latest
@@ -78,6 +80,7 @@ jobs:
           npx tsc -b --noEmit
           npm run lint
 
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
@@ -92,6 +95,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: storagebox_fn
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' }}
           build-args: |
             VITE_STORAGEBOX_API_URL=${{ vars.VITE_STORAGEBOX_API_URL != '' && vars.VITE_STORAGEBOX_API_URL || 'https://storagebox.urbinaryhub.rw' }}

@@ -47,7 +47,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node -e \"require('fs').writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }))\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test \"test/**/*.test.mjs\" \"test/**/*.test.cjs\"",
+    "test": "npm run build && node --test test/*.test.mjs test/*.test.cjs",
     "prepublishOnly": "npm test"
   },
   "devDependencies": {
