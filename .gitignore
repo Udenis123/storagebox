@@ -1,5 +1,6 @@
 node_modules/
 dist/
+storagebox_fn/public/pdf.worker.min.mjs
 logs/
 .env
 .env.local

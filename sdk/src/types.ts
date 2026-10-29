@@ -75,7 +75,7 @@ export interface UploadOptions {
   /** Collection path such as `invoices/2026`; missing collections are created. */
   collection?: string;
   collectionId?: string;
-  /** Defaults to the collection's access, or PUBLIC. */
+  /** Defaults to PRIVATE. Pass PUBLIC for a permanent link. */
   access?: FileAccess;
   /** Custom public ID (letters, digits, - and _). Only valid when uploading a single file. */
   publicId?: string;

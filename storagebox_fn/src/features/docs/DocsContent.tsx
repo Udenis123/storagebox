@@ -29,7 +29,7 @@ const CONCEPTS = [
   ["Cloud name", "Your account's short name. It appears in every file link, like /f/acme/…"],
   ["Public ID", "The name of a file inside your cloud. You choose it or we derive it from the file name."],
   ["Collection", "A folder path such as invoices/2026. Created automatically the first time you upload into it."],
-  ["Access", "PUBLIC files have a permanent link. PRIVATE files open only through signed links."],
+  ["Access", "New files are PRIVATE. Make one PUBLIC for a permanent link, or share a PRIVATE file with a signed link."],
 ];
 
 const TRANSFORMS = [
@@ -46,7 +46,7 @@ const ERRORS = [
   ["400", "E1000 · E4001 · E4002", `Invalid input, an unsupported file type, or a file over ${MAX_UPLOAD_LABEL}`],
   ["401", "E2006 · E2010", "Wrong API key or secret, or a key from another cloud"],
   ["402", "E4003", "Storage is full — delete files or ask for more space in the dashboard"],
-  ["403", "E2007 · E5000 · E5001", "Read-only key used to write, private file without a signature, or expired link"],
+  ["403", "E2007 · E5000 · E5001 · E5004", "Read-only key, private file, invalid signature, or expired link"],
   ["404", "E4000", "No file with that public ID"],
   ["409", "E4004 · E3001", "Public ID or collection already exists"],
   ["429", "E1003", "Too many requests — wait for the Retry-After header"],
@@ -182,11 +182,12 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
         <CodeBlock code={`npm install ${SDK_PACKAGE}\n\n# .env\n${credentialsEnv({ cloudName })}`} />
         <Prose>
           <p>
-            <strong>4.</strong> Upload your first file. The client reads the <code>STORAGEBOX_*</code> variables on its own:
+            <strong>4.</strong> Upload your first file. Uploads are private until you pass <code>access: "PUBLIC"</code>. The client reads the{" "}
+            <code>STORAGEBOX_*</code> variables on its own:
           </p>
         </Prose>
         <CodeBlock
-          code={`import { readFile } from "node:fs/promises";\nimport { StorageBox } from "${SDK_PACKAGE}";\n\nconst storagebox = new StorageBox();\n\nconst file = await storagebox.files.upload(\n  { data: await readFile("invoice.pdf"), filename: "invoice.pdf" },\n  { collection: "invoices/2026" },\n);\n\nconsole.log(file.url); // ${deliveryBase}/invoice.pdf`}
+          code={`import { readFile } from "node:fs/promises";\nimport { StorageBox } from "${SDK_PACKAGE}";\n\nconst storagebox = new StorageBox();\n\nconst file = await storagebox.files.upload(\n  { data: await readFile("invoice.pdf"), filename: "invoice.pdf" },\n  { collection: "invoices/2026" },\n);\n\nconst { url } = await storagebox.files.signedUrl(file.publicId, { expiresIn: 3600 });\nconsole.log(url);`}
         />
       </DocSection>
 
@@ -236,7 +237,7 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
           head={["Option", "What it does"]}
           rows={[
             ["--collection", "Collection for the folder; defaults to the folder's name"],
-            ["--access", "public or private; defaults to the collection's access"],
+            ["--access", "public or private; defaults to private"],
             ["--concurrency", "Parallel uploads, 1–64 (default 8)"],
             ["--state", "Progress file; defaults to .storagebox-upload-<hash>.json in the current directory"],
             ["--dry-run", "Count files and bytes without uploading"],
@@ -285,9 +286,9 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
       <DocSection id="private-files" title="Private files and access">
         <Prose>
           <p>
-            Every file is <code>PUBLIC</code> or <code>PRIVATE</code>. Pass <code>access</code> when uploading, or let the file take its
-            collection&apos;s access. A private file&apos;s link answers <code>403</code>; share it with a signed link, or read it in your own
-            code with your API key:
+            Files and collections start <code>PRIVATE</code>. Pass <code>access: "PUBLIC"</code> when uploading if you want a permanent link.
+            Opening a private file&apos;s permanent URL in a browser shows that the owner made it private. Share it with a signed link, or read
+            it in your own code with your API key:
           </p>
         </Prose>
         <CodeBlock
@@ -330,8 +331,9 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
         </Note>
         <Prose>
           <p>
-            Word, Excel, CSV and Markdown links open in a built-in viewer when someone visits them in a browser. Your code still receives the
-            original bytes. Add <code>?raw=1</code> to always get the file itself, or <code>?dl=1</code> to download it.
+            PDF, Word, Excel, CSV and Markdown links open in a built-in viewer when someone visits them in a browser. Your code still receives
+            the original bytes. Add <code>?raw=1</code> to always get the file itself, or <code>?dl=1</code> to download it. Private files show a
+            clear message instead of the file.
           </p>
         </Prose>
       </DocSection>

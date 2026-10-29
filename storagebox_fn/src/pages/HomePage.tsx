@@ -41,9 +41,9 @@ const STORIES: Story[] = [
   {
     id: "access",
     eyebrow: "Access",
-    title: "Public when you want it. Private when you don't.",
-    text: "Public files get a permanent link. Private files can only be opened through a signed link that stops working when you say so.",
-    points: ["Signed links from 5 minutes to 7 days", "Switch a file between public and private anytime", "Every view and download counted in your usage"],
+    title: "Private when you upload. Public when you choose.",
+    text: "Every new file is private. Make it public for a permanent link, or keep it private and share a signed link that stops working when you say so.",
+    points: ["Uploads start private", "Signed links from 5 minutes to 7 days", "Switch a file between public and private anytime"],
     visual: <SignedLinkMock />,
   },
 ];
@@ -66,6 +66,10 @@ const FAQ = [
   {
     question: "What happens when my storage is full?",
     answer: "You see a warning at 80%. Ask for more space from the dashboard in one click — the administrator raises your limit, and your files stay where they are.",
+  },
+  {
+    question: "Are my files public?",
+    answer: "No. Uploads are private until you make a file public or create a signed link. If someone opens a private link, they see that the owner made it private — not the file.",
   },
   {
     question: "Do I have to use the SDK?",

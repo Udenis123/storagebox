@@ -2,6 +2,8 @@ import { AccountStatus, ApiKeyScope, FileAccess, UserRole } from '@prisma/client
 
 export { AccountStatus, ApiKeyScope, FileAccess, UserRole };
 
+export const DEFAULT_FILE_ACCESS = FileAccess.PRIVATE;
+
 export interface AuthUser {
   id: string;
   accountId: string;

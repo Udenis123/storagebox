@@ -14,7 +14,7 @@ export interface SignedUrlOptions {
   now?: number;
 }
 
-export type SignatureCheck = 'valid' | 'expired' | 'invalid';
+export type SignatureCheck = 'valid' | 'expired' | 'invalid' | 'missing';
 
 const signaturePayload = (target: DeliveryTarget, expires: number): string =>
   `${target.cloudName}/${target.transform ?? ''}/${target.publicId}:${expires}`;
@@ -43,6 +43,7 @@ export function verifyDeliverySignature(
   sigRaw: unknown,
   now: number = Date.now(),
 ): SignatureCheck {
+  if (expiresRaw == null && sigRaw == null) return 'missing';
   if (typeof expiresRaw !== 'string' || typeof sigRaw !== 'string' || !/^\d+$/.test(expiresRaw)) return 'invalid';
   const expires = Number(expiresRaw);
   if (!safeEqual(signDelivery(target, expires), sigRaw)) return 'invalid';

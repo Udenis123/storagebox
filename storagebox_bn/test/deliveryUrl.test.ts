@@ -33,8 +33,11 @@ describe('delivery URLs', () => {
     expect(verifyDeliverySignature({ ...target, transform: 'w_10' }, expires, sig, NOW)).toBe('invalid');
   });
 
-  it('rejects missing or malformed parameters', () => {
-    expect(verifyDeliverySignature(target, undefined, undefined, NOW)).toBe('invalid');
+  it('treats a missing signature as missing, not invalid', () => {
+    expect(verifyDeliverySignature(target, undefined, undefined, NOW)).toBe('missing');
+  });
+
+  it('rejects malformed parameters', () => {
     expect(verifyDeliverySignature(target, 'abc', 'sig', NOW)).toBe('invalid');
   });
 

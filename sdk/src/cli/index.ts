@@ -19,7 +19,7 @@ parallel, and a stopped run picks up where it left off when started again.
 
 Options:
   --collection <path>   Collection for the folder (default: the folder's name)
-  --access <access>     public or private (default: the collection's access)
+  --access <access>     public or private (default: private)
   --concurrency <n>     Parallel uploads, 1-${MAX_CONCURRENCY} (default: ${DEFAULT_CONCURRENCY})
   --state <file>        Progress file (default: .storagebox-upload-<hash>.json here)
   --dry-run             Count what would be uploaded without sending anything

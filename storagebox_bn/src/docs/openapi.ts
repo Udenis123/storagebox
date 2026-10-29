@@ -110,7 +110,7 @@ export const openApiDocument = {
                 properties: {
                   file: { type: 'string', format: 'binary' },
                   collection: { type: 'string', description: 'Collection path; created if missing' },
-                  access: { type: 'string', enum: ['PUBLIC', 'PRIVATE'] },
+                  access: { type: 'string', enum: ['PUBLIC', 'PRIVATE'], description: 'Defaults to PRIVATE' },
                   publicId: { type: 'string', description: 'Custom public id (single file only)' },
                   tags: { type: 'string', description: 'Comma separated' },
                 },
@@ -123,7 +123,7 @@ export const openApiDocument = {
                 properties: {
                   url: { type: 'string', description: 'Remote http(s) file to import' },
                   collection: { type: 'string' },
-                  access: { type: 'string', enum: ['PUBLIC', 'PRIVATE'] },
+                  access: { type: 'string', enum: ['PUBLIC', 'PRIVATE'], description: 'Defaults to PRIVATE' },
                   publicId: { type: 'string' },
                   tags: { type: 'array', items: { type: 'string' } },
                 },

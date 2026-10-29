@@ -10,6 +10,7 @@ import { renderViewerPage, ViewerKind, viewerKindFor } from '@/lib/documentViewe
 import { isTransformable } from '@/lib/fileTypes';
 import { getObject, getObjectBuffer, putObject } from '@/lib/storage';
 import { applyTransform, parseTransform, TransformParseError } from '@/lib/transform';
+import { ownerMadePrivateCopy } from '@/lib/privateFile';
 import { FileAccess } from '@/types/api';
 import ApiError from '@/utils/ApiError';
 import { contentDisposition } from '@/utils/contentDisposition';
@@ -63,8 +64,11 @@ async function findDeliverableFile(cloudName: string, publicId: string, ext: str
 function assertAccess(file: File, target: DeliveryTarget, request: DeliveryRequest): number | undefined {
   if (file.access === FileAccess.PUBLIC) return undefined;
   const check = verifyDeliverySignature(target, request.expires, request.sig);
+  if (check === 'missing') {
+    throw new ApiError(status.FORBIDDEN, ownerMadePrivateCopy(file.mime).message, ERROR_CODES.FILE_PRIVATE);
+  }
   if (check === 'expired') throw new ApiError(status.FORBIDDEN, 'This link has expired', ERROR_CODES.LINK_EXPIRED);
-  if (check === 'invalid') throw new ApiError(status.FORBIDDEN, 'This file is private — use a signed link', ERROR_CODES.INVALID_SIGNATURE);
+  if (check === 'invalid') throw new ApiError(status.FORBIDDEN, 'This link is not valid', ERROR_CODES.INVALID_SIGNATURE);
   return Number(request.expires);
 }
 

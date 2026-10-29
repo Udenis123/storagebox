@@ -18,7 +18,7 @@ export type UploadDestination = {
   collectionId?: string;
   /** Path of the destination collection; folder uploads create sub-collections under it. Unset means Unsorted. */
   collectionPath?: string;
-  access: AccessChoice;
+  access: FileAccess;
 };
 
 const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
@@ -41,7 +41,7 @@ export function useUploader() {
     setTasks((current) => current.map((task) => (task.id === id ? { ...task, ...patch } : task)));
 
   const startUploads = useCallback(
-    async (picked: PickedFile[], { collectionId, collectionPath, access: accessChoice }: UploadDestination) => {
+    async (picked: PickedFile[], { collectionId, collectionPath, access }: UploadDestination) => {
       if (picked.length >= MAX_FILES_PER_DROP) {
         toast.warning(`Uploading the first ${MAX_FILES_PER_DROP.toLocaleString()} files — use the storagebox CLI for bigger folders`);
       }
@@ -50,7 +50,6 @@ export function useUploader() {
       if (skipped > 0) toast.info(`Skipped ${skipped} file(s) with an unsupported type`);
       if (!supported.length) return;
 
-      const access = accessChoice === "DEFAULT" ? undefined : accessChoice;
       const queued = supported.map((entry) => {
         const collection = entry.relativePath ? folderCollectionPath(collectionPath, entry.relativePath) : undefined;
         return {

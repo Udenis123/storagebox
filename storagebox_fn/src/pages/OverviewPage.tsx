@@ -38,7 +38,8 @@ import { StorageBox } from "${SDK_PACKAGE}";
 
 const storagebox = new StorageBox();
 const file = await storagebox.files.upload(invoice, { collection: "invoices" });
-console.log(file.url);`;
+const { url } = await storagebox.files.signedUrl(file.publicId, { expiresIn: 3600 });
+console.log(url);`;
 
   return (
     <>

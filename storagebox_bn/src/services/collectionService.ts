@@ -3,7 +3,7 @@ import { Collection, Prisma } from '@prisma/client';
 import status from 'http-status';
 import prisma from '@/config/prisma';
 import { deleteObjects } from '@/lib/storage';
-import { AccountContext, CollectionDto, FileAccess } from '@/types/api';
+import { AccountContext, CollectionDto, DEFAULT_FILE_ACCESS, FileAccess } from '@/types/api';
 import ApiError from '@/utils/ApiError';
 import { toCollectionDto } from '@/utils/dto';
 import { ERROR_CODES } from '@/utils/errorCodes';
@@ -84,7 +84,7 @@ export async function createCollection(
       parentId: parent?.id,
       name: input.name.trim(),
       path,
-      access: input.access ?? parent?.access ?? FileAccess.PUBLIC,
+      access: input.access ?? DEFAULT_FILE_ACCESS,
     },
   });
   logActivity(ctx, 'collection.created', path);
@@ -102,7 +102,7 @@ export async function ensureCollectionPath(ctx: AccountContext, rawPath: string)
     current =
       (await prisma.collection.findUnique({ where })) ??
       (await prisma.collection
-        .create({ data: { accountId: ctx.accountId, parentId: parent?.id, name, path, access: parent?.access ?? FileAccess.PUBLIC } })
+        .create({ data: { accountId: ctx.accountId, parentId: parent?.id, name, path, access: parent?.access ?? DEFAULT_FILE_ACCESS } })
         .catch(async (error: unknown) => {
           // Parallel uploads into a new folder race to create it; the loser uses the winner's row.
           const isTaken = error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';

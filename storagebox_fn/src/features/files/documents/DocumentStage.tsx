@@ -46,7 +46,13 @@ export function DocumentStage({ file, kind }: { file: StoredFile; kind: PagedKin
       .then((data) => renderPaged(kind, data, content, { signal: controller.signal, onPage: setRenderedPages }))
       .then((pageCount) => !controller.signal.aborted && setState({ status: "ready", pageCount }))
       .catch((error: Error) => {
-        if (!controller.signal.aborted) setState({ status: "error", message: error.message || "This document could not be shown" });
+        if (!controller.signal.aborted) {
+          const isWorkerError = /fake worker|dynamically imported module|pdf\.worker/i.test(error.message);
+          setState({
+            status: "error",
+            message: isWorkerError ? "This document could not be previewed. Download it to open it on your device." : error.message || "This document could not be shown",
+          });
+        }
       });
     return () => controller.abort();
   }, [url, kind]);

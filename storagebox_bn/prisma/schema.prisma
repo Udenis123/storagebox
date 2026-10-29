@@ -98,7 +98,7 @@ model Collection {
   parentId  String?
   name      String
   path      String
-  access    FileAccess @default(PUBLIC)
+  access    FileAccess @default(PRIVATE)
   /// Secret part of the public gallery link (`/s/<token>`); null when the collection is not shared.
   shareToken String?   @unique
   /// When the gallery is shared, visitors may download files (hover icon / lightbox).
@@ -131,7 +131,7 @@ model File {
   contentEncoding   String?
   /// SHA-256 of the file as uploaded.
   checksum          String
-  access            FileAccess @default(PUBLIC)
+  access            FileAccess @default(PRIVATE)
   storageKey        String     @unique
   width             Int?
   height            Int?

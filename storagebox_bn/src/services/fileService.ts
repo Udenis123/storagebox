@@ -11,7 +11,7 @@ import { deleteObjects, putObjectStream } from '@/lib/storage';
 import { prepareForStorage, PreparedUpload } from '@/lib/optimizeUpload';
 import { sha256File } from '@/lib/tempFiles';
 import { parseTransform, TransformParseError } from '@/lib/transform';
-import { AccountContext, FileAccess, FileDto, FileKind } from '@/types/api';
+import { AccountContext, DEFAULT_FILE_ACCESS, FileAccess, FileDto, FileKind } from '@/types/api';
 import ApiError from '@/utils/ApiError';
 import { randomSuffix } from '@/utils/crypto';
 import { toFileDto } from '@/utils/dto';
@@ -186,7 +186,7 @@ async function recordStoredFile(
         originalSizeBytes: stored.size < source.size ? BigInt(source.size) : null,
         contentEncoding: stored.contentEncoding,
         checksum,
-        access: options.access ?? collection?.access ?? FileAccess.PUBLIC,
+        access: options.access ?? DEFAULT_FILE_ACCESS,
         storageKey,
         tags: options.tags ?? [],
         uploadedById: ctx.userId,

@@ -46,7 +46,7 @@ Everyone else uses **Request an account**. New accounts stay pending until an ad
 
 - **Accounts and cloud names.** Every account gets a unique cloud name, which appears in its links: `/f/{cloud}/{publicId}.{ext}`.
 - **Collections** are nested folders such as `invoices/2026`. Uploading to a path that doesn't exist yet creates it.
-- **Access.** `PUBLIC` files have permanent links that are cached for a day. `PRIVATE` files can only be opened with a signed link that expires after 1 minute to 7 days. Signing uses HMAC-SHA256 with `SIGNING_SECRET`.
+- **Access.** New files and collections are `PRIVATE`. `PUBLIC` files have permanent links that are cached for a day. `PRIVATE` files can only be opened with a signed link that expires after 1 minute to 7 days. Opening a private permanent URL in a browser shows that the owner made the file private. Signing uses HMAC-SHA256 with `SIGNING_SECRET`.
 - **Transformations.** Add a segment such as `w_400,h_300,c_fill,f_webp` to the URL of any image. Each variant is generated once with sharp and then cached in RustFS.
 - **Previews.** The dashboard previews images, PDFs, Word (.docx) files, video, audio and text.
 - **Developer API (`/v1`).** Like Cloudinary, each account has a cloud name, a 15-digit API key and an API secret. Authenticate with HTTP Basic auth (key:secret); the optional `x-cloud-name` header must match the key's account. Keys can be `READ` or `READ_WRITE` and are rate limited per minute.
@@ -68,7 +68,7 @@ curl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" \
 import { StorageBox } from "@udenis123/storagebox";
 
 const storagebox = new StorageBox();
-const file = await storagebox.files.upload(myFile, { collection: "invoices/2026" });
+const file = await storagebox.files.upload(myFile, { collection: "invoices/2026" }); // private by default
 const { url } = await storagebox.files.signedUrl(file.publicId, { expiresIn: 3600 });
 ```
 

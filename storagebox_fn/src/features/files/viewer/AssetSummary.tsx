@@ -36,7 +36,7 @@ function AccessCard({ file }: { file: StoredFile }) {
       <div className="grid flex-1 gap-0.5">
         <span className="text-sm font-semibold">{isPublic ? "Public" : "Private"}</span>
         <span className="text-xs text-muted-foreground">
-          {isPublic ? "Anyone with the link can open it" : "Opens only through signed links or your API key"}
+          {isPublic ? "Anyone with the link can open it" : "The permanent link tells visitors you made it private. Share a signed link instead."}
         </span>
       </div>
       <Button

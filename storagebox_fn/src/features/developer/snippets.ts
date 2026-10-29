@@ -38,14 +38,13 @@ import { StorageBox } from "${SDK_PACKAGE}";
 const storagebox = new StorageBox();
 
 // Browser: a File from <input type="file">. Node: { data: await readFile(path), filename }
+// Uploads are private unless you pass access: "PUBLIC"
 const file = await storagebox.files.upload(myFile, {
   collection: "contracts/2026",
   tags: ["legal", "signed"],
 });
-console.log(file.publicId, file.url);
-
-// Images: resize / convert straight from the permanent link
-const thumbnail = storagebox.url(file, { width: 400, format: "webp" });`,
+const { url } = await storagebox.files.signedUrl(file.publicId, { expiresIn: 3600 });
+console.log(file.publicId, url);`,
       python: `import os, requests
 
 auth = (os.environ["STORAGEBOX_API_KEY"], os.environ["STORAGEBOX_API_SECRET"])

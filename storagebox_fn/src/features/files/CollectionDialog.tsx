@@ -5,7 +5,7 @@ import { FormField, INPUT_CLASS } from "@/components/shared/FormField";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import type { Collection, FileAccess } from "@/lib/types";
+import { DEFAULT_FILE_ACCESS, type Collection, type FileAccess } from "@/lib/types";
 import { useCreateCollection, useUpdateCollection } from "./hooks";
 
 const ACCESS_OPTIONS = [
@@ -17,7 +17,7 @@ export type CollectionDialogState = { mode: "create"; parent?: Collection } | { 
 
 export function CollectionDialog({ state, onClose }: { state: CollectionDialogState; onClose: () => void }) {
   const [name, setName] = useState("");
-  const [access, setAccess] = useState<FileAccess>("PUBLIC");
+  const [access, setAccess] = useState<FileAccess>(DEFAULT_FILE_ACCESS);
   const [shouldApplyToFiles, setShouldApplyToFiles] = useState(false);
   const createCollection = useCreateCollection(onClose);
   const updateCollection = useUpdateCollection(onClose);
@@ -25,7 +25,7 @@ export function CollectionDialog({ state, onClose }: { state: CollectionDialogSt
   useEffect(() => {
     if (!state) return;
     setName(state.mode === "rename" ? state.collection.name : "");
-    setAccess(state.mode === "rename" ? state.collection.access : (state.parent?.access ?? "PUBLIC"));
+    setAccess(state.mode === "rename" ? state.collection.access : DEFAULT_FILE_ACCESS);
     setShouldApplyToFiles(false);
   }, [state]);
 

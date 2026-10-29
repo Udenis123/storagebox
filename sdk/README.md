@@ -35,7 +35,8 @@ const file = await storagebox.files.upload(
   { collection: "contracts/2026", tags: ["legal"] },
 );
 
-console.log(file.url); // permanent link (public files)
+const { url } = await storagebox.files.signedUrl(file.publicId, { expiresIn: 3600 });
+console.log(url); // uploads are private; use a signed link or pass access: "PUBLIC"
 ```
 
 Or pass everything explicitly — each option overrides its environment variable:
@@ -88,7 +89,7 @@ npx @udenis123/storagebox upload ./archive --collection archive --access private
 | Option | Description |
 | --- | --- |
 | `--collection <path>` | Collection for the folder (default: the folder's name). |
-| `--access public\|private` | Default: the collection's access. |
+| `--access public\|private` | Default: private. |
 | `--concurrency <n>` | Parallel uploads, 1–64 (default 8). |
 | `--state <file>` | Progress file (default: `.storagebox-upload-<hash>.json` in the current directory). |
 | `--dry-run` | Count files and bytes without uploading. |

@@ -30,8 +30,8 @@ const markPages = (pages: Iterable<Element>, maxPages = Infinity): number => {
 };
 
 async function renderPdf(data: ArrayBuffer, container: HTMLElement, { maxPages = Infinity, signal, onPage }: RenderOptions): Promise<number> {
-  const [pdfjs, { default: workerSrc }] = await Promise.all([import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.mjs?url")]);
-  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.min.mjs`;
   const loadingTask = pdfjs.getDocument({ data });
   const pdf = await loadingTask.promise;
   const pageCount = pdf.numPages;

@@ -59,7 +59,7 @@ export function AssetLinks({ file }: { file: StoredFile }) {
       ) : (
         <div className="flex items-start gap-3 rounded-lg bg-tone-warning-bg/60 p-3 text-sm ring-1 ring-tone-warning/20">
           <Lock className="mt-0.5 size-4 shrink-0 text-tone-warning" />
-          <p>This file is private, so it has no permanent link. Create an expiring link below, or make it public in Summary.</p>
+          <p>This file is private, so it has no permanent link. Anyone who opens the URL sees that you made it private. Create an expiring link below, or make it public in Summary.</p>
         </div>
       )}
       <SignedLinkCard file={file} />

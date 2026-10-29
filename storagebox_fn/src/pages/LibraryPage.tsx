@@ -20,7 +20,7 @@ import { displayPath, useUploader, type AccessChoice } from "@/features/files/us
 import { AssetViewer } from "@/features/files/viewer/AssetViewer";
 import { FILES_PAGE_SIZE } from "@/lib/constants";
 import { KIND_META, KIND_OPTIONS } from "@/lib/files";
-import type { Collection, FileAccess, FileKind, StoredFile } from "@/lib/types";
+import { DEFAULT_FILE_ACCESS, type Collection, type FileAccess, type FileKind, type StoredFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const ANY = "any";
@@ -57,7 +57,7 @@ export default function LibraryPage() {
   const [sharing, setSharing] = useState<Collection | null>(null);
   const [editing, setEditing] = useState<CollectionDialogState>(null);
   const [isPickingFolder, setIsPickingFolder] = useState(false);
-  const [accessChoice, setAccessChoice] = useState<AccessChoice>("DEFAULT");
+  const [accessChoice, setAccessChoice] = useState<AccessChoice>(DEFAULT_FILE_ACCESS);
   const { data: collections = [] } = useCollections();
   const { data: openFile } = useFile(openFileId);
   const uploader = useUploader();
@@ -102,18 +102,18 @@ export default function LibraryPage() {
   const currentCollection = collections.find((collection) => collection.id === collectionId);
   const isUnsorted = collectionId === UNSORTED;
   const subFolders = isUnsorted ? [] : collections.filter((collection) => (collection.parentId ?? ALL_FILES) === (currentCollection?.id ?? ALL_FILES));
-  const folderAccess = currentCollection?.access ?? "PUBLIC";
+  const folderAccess = currentCollection?.access ?? DEFAULT_FILE_ACCESS;
   const newFilesAccess = accessChoice === "DEFAULT" ? folderAccess : accessChoice;
   const destination = displayPath(currentCollection?.path);
   const stats = [data ? plural(data.total, "file") : null, isUnsorted ? null : plural(subFolders.length, "folder")].filter(Boolean).join(" · ");
 
   const openCollection = (id: string) => {
     setSelected(new Set());
-    setAccessChoice("DEFAULT");
+    setAccessChoice(DEFAULT_FILE_ACCESS);
     setParam({ collection: id || null, file: null });
   };
   const upload = (picked: Parameters<typeof uploader.startUploads>[0]) =>
-    void uploader.startUploads(picked, { collectionId: currentCollection?.id, collectionPath: currentCollection?.path, access: accessChoice });
+    void uploader.startUploads(picked, { collectionId: currentCollection?.id, collectionPath: currentCollection?.path, access: newFilesAccess });
 
   const toggle = (id: string) =>
     setSelected((current) => {

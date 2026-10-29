@@ -1,4 +1,5 @@
 export type FileAccess = "PUBLIC" | "PRIVATE";
+export const DEFAULT_FILE_ACCESS: FileAccess = "PRIVATE";
 export type FileKind = "image" | "document" | "video" | "audio" | "archive" | "other";
 export type UserRole = "USER" | "ADMIN";
 export type ApiKeyScope = "READ" | "READ_WRITE";
