@@ -1,12 +1,12 @@
 import path from 'path';
 import { randomBytes } from 'crypto';
 
-/** How a browser-opened document is shown: rendered in the page, or handed to Office Online. */
-export type ViewerKind = 'pdf' | 'docx' | 'pptx' | 'sheet' | 'text' | 'office';
+/** How a browser-opened file is shown: rendered in the page, or handed to Office Online. */
+export type ViewerKind = 'pdf' | 'docx' | 'pptx' | 'sheet' | 'text' | 'office' | 'video' | 'audio';
 
 /**
- * Formats shown in the viewer page. Browsers download Office files, and many phones download PDFs,
- * so those render here; images, video, audio, txt and json open natively.
+ * Formats shown in the viewer page. Browsers download Office files, many phones download PDFs,
+ * and Chrome downloads .mov instead of playing it — those render here. Images still open natively.
  */
 const VIEWER_KINDS: Record<string, ViewerKind> = {
   pdf: 'pdf',
@@ -20,6 +20,11 @@ const VIEWER_KINDS: Record<string, ViewerKind> = {
   ppt: 'office',
   odt: 'office',
   rtf: 'office',
+  mp4: 'video',
+  mov: 'video',
+  webm: 'video',
+  mp3: 'audio',
+  wav: 'audio',
 };
 
 export const viewerKindFor = (ext: string): ViewerKind | undefined => VIEWER_KINDS[ext];
@@ -45,6 +50,8 @@ const SCRIPTS_BY_KIND: Record<ViewerKind, string[]> = {
   sheet: ['xlsx.full.min.js'],
   text: [],
   office: [],
+  video: [],
+  audio: [],
 };
 
 const OFFICE_EMBED_URL = 'https://view.officeapps.live.com/op/embed.aspx?src=';
@@ -89,6 +96,10 @@ iframe{border:0;width:100%;height:100%;background:#fff}
 .page{display:block;max-width:100%;height:auto!important;background:#fff;box-shadow:0 10px 30px -12px rgba(15,23,42,.35)}
 .pptx-preview-wrapper{height:auto!important;overflow:visible!important;background:transparent!important;display:flex!important;flex-direction:column;align-items:center;gap:24px;padding:32px 16px}
 .pptx-preview-slide-wrapper{margin:0!important;box-shadow:0 10px 30px -12px rgba(15,23,42,.35)}
+body.media{background:#0f172a}
+body.media main{display:grid;place-items:center;overflow:hidden;padding:16px;background:#0f172a}
+.player{width:min(100%,1100px);max-height:100%;border-radius:12px;background:#000;outline:none}
+.player:not(video){width:min(100%,36rem)}
 `;
 
 /** Self-contained page that renders a document the browser would otherwise download. */
@@ -106,16 +117,17 @@ export function renderViewerPage(page: ViewerPage): { html: string; csp: string 
 <div class="meta"><span class="name">${name}</span><span class="sub">${escapeHtml(page.sizeLabel)}</span></div>
 <a class="btn" href="${escapeHtml(page.downloadPath)}">Download</a></header>`;
 
+  const isMedia = page.kind === 'video' || page.kind === 'audio';
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>${name} · StorageBox</title><style>${STYLES}</style></head><body>
+<meta name="robots" content="noindex"><title>${name} · StorageBox</title><style>${STYLES}</style></head><body${isMedia ? ' class="media"' : ''}>
 ${header}
-<main id="view"><div class="status"><div class="spinner"></div>Opening document…</div></main>
+<main id="view"><div class="status"><div class="spinner"></div>Opening…</div></main>
 ${scripts}<script nonce="${nonce}">
 (function(){
 var cfg=${config};var view=document.getElementById('view');
 function message(text){view.innerHTML='';var box=document.createElement('div');box.className='status';box.textContent=text;view.appendChild(box)}
 function fetchRaw(type){return fetch(cfg.rawPath).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r[type]()})}
-function fail(){message('This document could not be shown here. Use Download to open it on your device.')}
+function fail(){message('This file could not be shown here. Use Download to open it on your device.')}
 function pageWidth(){return Math.max(240,Math.min(view.clientWidth-32,960))}
 if(cfg.kind==='pdf'){Promise.all([import(cfg.assetBase+'pdf.min.mjs'),fetchRaw('arrayBuffer')]).then(function(r){
   var pdfjs=r[0];pdfjs.GlobalWorkerOptions.workerSrc=cfg.assetBase+'pdf.worker.min.mjs';return pdfjs.getDocument({data:new Uint8Array(r[1])}).promise}).then(function(pdf){
@@ -138,6 +150,14 @@ else if(cfg.kind==='sheet'){fetchRaw('arrayBuffer').then(function(buf){
   book.SheetNames.forEach(function(n,i){var t=document.createElement('button');t.className='tab';t.textContent=n;t.onclick=function(){show(i)};tabs.appendChild(t)});
   if(book.SheetNames.length>1)view.appendChild(tabs);view.appendChild(sheet);show(0)}).catch(fail)}
 else if(cfg.kind==='text'){fetchRaw('text').then(function(text){view.innerHTML='';var pre=document.createElement('pre');pre.textContent=text;view.appendChild(pre)}).catch(fail)}
+else if(cfg.kind==='video'||cfg.kind==='audio'){
+  view.innerHTML='';
+  var media=document.createElement(cfg.kind);
+  media.controls=true;media.autoplay=true;media.preload='metadata';media.setAttribute('playsinline','');
+  media.className='player';media.src=cfg.rawPath;
+  media.addEventListener('error',fail);
+  view.appendChild(media);
+}
 else if(cfg.publicRawUrl){view.innerHTML='';var frame=document.createElement('iframe');frame.title='Document preview';frame.src=cfg.officeEmbedUrl+encodeURIComponent(cfg.publicRawUrl);view.appendChild(frame)}
 else{message('A preview for this file type is available once StorageBox is online. Use Download to open it on your device.')}
 })();
@@ -149,6 +169,7 @@ else{message('A preview for this file type is available once StorageBox is onlin
     "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
+    "media-src 'self' blob:",
     "font-src 'self' data: blob:",
     "connect-src 'self'",
     'frame-src https://view.officeapps.live.com',
