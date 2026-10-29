@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
-const { StorageBox, transformation, DEFAULT_BASE_URL } = require("storagebox");
+const { StorageBox, transformation, DEFAULT_BASE_URL } = require("@udenis123/storagebox");
 
 test("CommonJS require resolves the package", () => {
   assert.equal(typeof StorageBox, "function");

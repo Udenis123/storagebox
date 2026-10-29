@@ -1,9 +1,9 @@
 export const API_BASE_URL = (import.meta.env.VITE_STORAGEBOX_API_URL ?? "http://localhost:4200").replace(/\/+$/, "");
 export const DASHBOARD_API_URL = `${API_BASE_URL}/api`;
 export const API_DOCS_URL = `${API_BASE_URL}/docs`;
-/** Default API origin baked into the `storagebox` npm package. */
+/** Default API origin baked into the `@udenis123/storagebox` npm package. */
 export const HOSTED_API_URL = "https://storagebox.urbinaryhub.rw";
-export const SDK_PACKAGE = "storagebox";
+export const SDK_PACKAGE = "@udenis123/storagebox";
 
 export const MAX_UPLOAD_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB ?? 5120);
 const MB_PER_GB = 1024;

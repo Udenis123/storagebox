@@ -1,5 +1,5 @@
 {
-  "name": "storagebox",
+  "name": "@udenis123/storagebox",
   "version": "1.0.0",
   "description": "Official Node.js and browser client for StorageBox — upload, organise, transform and share files with one link",
   "keywords": [
@@ -13,6 +13,14 @@
     "cloudinary-alternative"
   ],
   "homepage": "https://storagebox.urbinaryhub.rw",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Udenis123/storagebox.git",
+    "directory": "sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/Udenis123/storagebox/issues"
+  },
   "author": "Denis Dideho <denisdideho@gmail.com>",
   "license": "MIT",
   "type": "module",
@@ -20,7 +28,10 @@
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
   "bin": {
-    "storagebox": "./dist/esm/cli/index.js"
+    "storagebox": "dist/esm/cli/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "exports": {
     ".": {

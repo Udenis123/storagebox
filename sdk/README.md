@@ -1,4 +1,4 @@
-# storagebox
+# @udenis123/storagebox
 
 Official client for [StorageBox](https://storagebox.urbinaryhub.rw) — store files, organise them in collections, transform images on the fly and share them with permanent or expiring links. Zero dependencies; works in Node 18+, Bun, Deno and edge runtimes, with both `import` and `require`.
 
@@ -7,7 +7,7 @@ Official client for [StorageBox](https://storagebox.urbinaryhub.rw) — store fi
 ## Install
 
 ```bash
-npm install storagebox
+npm install @udenis123/storagebox
 ```
 
 ## Configure
@@ -26,7 +26,7 @@ STORAGEBOX_API_SECRET=your_api_secret
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { StorageBox } from "storagebox";
+import { StorageBox } from "@udenis123/storagebox";
 
 const storagebox = new StorageBox(); // reads STORAGEBOX_* from the environment
 
@@ -49,7 +49,7 @@ const storagebox = new StorageBox({
 });
 ```
 
-CommonJS works too: `const { StorageBox } = require("storagebox");`
+CommonJS works too: `const { StorageBox } = require("@udenis123/storagebox");`
 
 When `cloudName` is set, every request carries it and StorageBox rejects keys that belong to a different cloud (`E2010`).
 
@@ -82,7 +82,7 @@ The package ships a command that uploads a whole folder — thousands or million
 
 ```bash
 export STORAGEBOX_API_KEY=482917365028174 STORAGEBOX_API_SECRET=your_api_secret STORAGEBOX_CLOUD_NAME=acme
-npx storagebox upload ./archive --collection archive --access private --concurrency 16
+npx @udenis123/storagebox upload ./archive --collection archive --access private --concurrency 16
 ```
 
 | Option | Description |
@@ -131,7 +131,7 @@ Options: `width`, `height`, `crop` (`fill` | `fit` | `limit`), `quality` (1–10
 
 ```ts
 import express from "express";
-import { verifyWebhook } from "storagebox";
+import { verifyWebhook } from "@udenis123/storagebox";
 
 app.post("/hooks/storagebox", express.text({ type: "*/*" }), async (req, res) => {
   const payload = await verifyWebhook(req.body, req.header("x-storagebox-signature"), process.env.STORAGEBOX_WEBHOOK_SECRET!);
@@ -170,5 +170,5 @@ LIVE_STORAGEBOX_API_KEY=482917365028174 LIVE_STORAGEBOX_API_SECRET=… npm test
 
 ```bash
 npm login
-npm publish   # runs the tests first (prepublishOnly)
+npm publish --access public --auth-type=web
 ```

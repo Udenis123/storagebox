@@ -63,9 +63,9 @@ curl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" \
 ```
 
 ```ts
-// npm install storagebox
+// npm install @udenis123/storagebox
 // .env: STORAGEBOX_CLOUD_NAME, STORAGEBOX_API_KEY, STORAGEBOX_API_SECRET (+ STORAGEBOX_API_URL when self-hosted)
-import { StorageBox } from "storagebox";
+import { StorageBox } from "@udenis123/storagebox";
 
 const storagebox = new StorageBox();
 const file = await storagebox.files.upload(myFile, { collection: "invoices/2026" });
