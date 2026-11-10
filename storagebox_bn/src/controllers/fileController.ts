@@ -12,10 +12,13 @@ import {
   getFile,
   listFiles,
   ListFilesQuery,
+  replaceFileContent,
   updateFile,
   UploadSource,
   uploadFiles,
 } from '@/services/fileService';
+import ApiError from '@/utils/ApiError';
+import { ERROR_CODES } from '@/utils/errorCodes';
 import catchAsync from '@/utils/catchAsync';
 import { currentContext, param } from '@/utils/request';
 import { sendResponse } from '@/utils/response';
@@ -49,6 +52,22 @@ export const getFileHandler = catchAsync(async (req: Request, res: Response) => 
 
 export const updateFileHandler = catchAsync(async (req: Request, res: Response) => {
   const result = await updateFile(currentContext(req), fileRef(req), req.body);
+  sendResponse(res, status.OK, result.message, result.data);
+});
+
+export const replaceFileHandler = catchAsync(async (req: Request, res: Response) => {
+  const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+  if (files.length !== 1) {
+    throw new ApiError(status.BAD_REQUEST, 'Replace expects exactly one file', ERROR_CODES.NO_FILE_PROVIDED);
+  }
+  const uploaded = files[0]!;
+  const source: UploadSource = {
+    path: uploaded.path,
+    size: uploaded.size,
+    originalName: uploaded.originalname,
+    mime: uploaded.mimetype,
+  };
+  const result = await replaceFileContent(currentContext(req), fileRef(req), source);
   sendResponse(res, status.OK, result.message, result.data);
 });
 

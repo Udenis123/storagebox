@@ -9,6 +9,7 @@ import { formatDateTime, timeAgo } from "@/lib/format";
 const ACTION_TEXT: Record<string, string> = {
   "file.uploaded": "uploaded",
   "file.updated": "updated",
+  "file.replaced": "replaced",
   "file.deleted": "deleted",
   "collection.created": "created collection",
   "collection.updated": "updated collection",

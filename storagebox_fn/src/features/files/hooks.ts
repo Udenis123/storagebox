@@ -3,6 +3,7 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { applyTransform, isTransformable } from "@/lib/files";
 import { queryKeys } from "@/lib/queryKeys";
 import type { FileAccess, StoredFile } from "@/lib/types";
+import { replaceFileContent } from "@/lib/upload";
 import {
   createCollection,
   createSignedLink,
@@ -70,6 +71,16 @@ export const useUpdateFile = (onSuccess?: (file: StoredFile) => void) =>
     invalidate: assetQueries,
     onSuccess,
   });
+
+export const useReplaceFile = (onSuccess?: (file: StoredFile) => void) =>
+  useApiMutation(
+    ({ id, file, onProgress }: { id: string; file: File; onProgress?: (percent: number) => void }) =>
+      replaceFileContent(id, file, onProgress ?? (() => undefined)),
+    {
+      invalidate: assetQueries,
+      onSuccess,
+    },
+  );
 
 export const useSetFilesAccess = (onSuccess?: () => void) =>
   useApiMutation(({ ids, access }: { ids: string[]; access: FileAccess }) => setFilesAccess(ids, access), { invalidate: assetQueries, onSuccess });

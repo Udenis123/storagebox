@@ -168,6 +168,27 @@ export const openApiDocument = {
         responses: { 200: { description: 'The original file; supports Range requests' } },
       },
     },
+    '/v1/files/{publicId}/replace': {
+      parameters: [publicIdParam],
+      post: {
+        tags: ['Files'],
+        summary: 'Replace file bytes while keeping the same publicId and share URL',
+        description: 'Multipart upload of exactly one file. Extension must match the existing file so `/f/{cloud}/{publicId}.{ext}` stays valid.',
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['file'],
+                properties: { file: { type: 'string', format: 'binary' } },
+              },
+            },
+          },
+        },
+        responses: { 200: ok(fileSchema, 'Replaced') },
+      },
+    },
     '/v1/files/bulk-access': {
       post: {
         tags: ['Files'],

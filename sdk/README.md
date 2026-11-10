@@ -64,6 +64,7 @@ When `cloudName` is set, every request carries it and StorageBox rejects keys th
 | `files.list(query?)` | Paginated, filter by `collection`, `kind`, `access`, `tag`, `search`, `sort`. |
 | `files.get(publicId)` | One file. |
 | `files.update(publicId, input)` | Rename, move (`collectionId`), change `access`, `tags` or `publicId`. |
+| `files.replace(publicId, source)` | Swap the bytes; same extension required so the share URL stays unchanged. |
 | `files.delete(publicId)` | Delete a file and its cached variants. |
 | `files.deleteMany(ids)` | Delete many files by `id`. |
 | `files.signedUrl(publicId, { expiresIn?, transform?, download? })` | Expiring link — works for private files. |
@@ -73,7 +74,7 @@ When `cloudName` is set, every request carries it and StorageBox rejects keys th
 
 Upload options: `collection` (path, created on demand), `collectionId`, `access` (`PUBLIC` | `PRIVATE`), `publicId`, `tags`.
 
-A file's link is `/f/<cloud>/<publicId>.<ext>` and does not include its collection, so renaming or moving collections never breaks links you have already shared.
+A file's link is `/f/<cloud>/<publicId>.<ext>` and does not include its collection, so renaming or moving collections never breaks links you have already shared. Use `files.replace` when you need a new video or document at that same URL (extension must match).
 
 Photos (JPG, PNG, WebP, AVIF) are optimised on upload and text files (TXT, CSV, JSON, Markdown, SVG) are stored compressed; links always return the full file. `sizeBytes` is the stored size and `originalSizeBytes` the uploaded size when compression saved space.
 

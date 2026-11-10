@@ -7,7 +7,15 @@ import sharp from 'sharp';
 import prisma from '@/config/prisma';
 import logger from '@/config/logger';
 import { signedUrl } from '@/lib/deliveryUrl';
-import { extensionOf, extensionsForKind, isAllowedExtension, isTransformable, kindForExtension, mimeForExtension } from '@/lib/fileTypes';
+import {
+  extensionOf,
+  extensionsForKind,
+  hasSameExtension,
+  isAllowedExtension,
+  isTransformable,
+  kindForExtension,
+  mimeForExtension,
+} from '@/lib/fileTypes';
 import { deleteObjects, putObjectStream } from '@/lib/storage';
 import { prepareForStorage, PreparedUpload } from '@/lib/optimizeUpload';
 import { sha256File, tempUploadPath } from '@/lib/tempFiles';
@@ -302,6 +310,89 @@ export async function updateFile(ctx: AccountContext, ref: FileRef, input: Updat
   });
   logActivity(ctx, 'file.updated', updated.originalName);
   return { message: 'File updated', data: toFileDto(updated, ctx.cloudName) };
+}
+
+/**
+ * Swap the stored bytes while keeping `publicId` and extension so the share URL stays the same.
+ * The replacement must use the same file extension (e.g. `.mp4` → `.mp4`).
+ */
+export async function replaceFileContent(
+  ctx: AccountContext,
+  ref: FileRef,
+  source: UploadSource,
+): Promise<ServiceResult<FileDto>> {
+  const file = await findFileRecord(ctx, ref);
+  if (!isAllowedExtension(extensionOf(source.originalName))) {
+    throw new ApiError(status.BAD_REQUEST, `${source.originalName}: this file type is not supported`, ERROR_CODES.FILE_TYPE_NOT_ALLOWED);
+  }
+  if (!hasSameExtension(file.ext, source.originalName)) {
+    throw new ApiError(
+      status.BAD_REQUEST,
+      `Replace must keep the .${file.ext} extension so the share link stays valid`,
+      ERROR_CODES.VALIDATION_ERROR,
+    );
+  }
+  const ext = file.ext;
+  const mime = mimeForExtension(ext);
+  const storageKey = `${ctx.accountId}/${randomUUID()}.${ext}`;
+  const checksum = await sha256File(source.path);
+  const stored = await prepareForStorage(source.path, source.size, ext);
+
+  const previousKey = file.storageKey;
+  const previousStreamKey = file.streamKey;
+  const previousSize = Number(file.sizeBytes);
+  const deltaBytes = stored.size - previousSize;
+  if (deltaBytes > 0) await assertWithinQuota(ctx.accountId, deltaBytes);
+
+  try {
+    const dimensions = await imageDimensions(stored.path, ext);
+    await putObjectStream(storageKey, createReadStream(stored.path), mime);
+
+    const derivatives = await prisma.derivative.findMany({ where: { fileId: file.id }, select: { storageKey: true } });
+    await prisma.derivative.deleteMany({ where: { fileId: file.id } });
+
+    let updated;
+    try {
+      updated = await prisma.file.update({
+        where: { id: file.id },
+        data: {
+          originalName: source.originalName,
+          mime,
+          sizeBytes: BigInt(stored.size),
+          originalSizeBytes: stored.size < source.size ? BigInt(source.size) : null,
+          contentEncoding: stored.contentEncoding,
+          checksum,
+          storageKey,
+          streamKey: null,
+          width: dimensions.width ?? null,
+          height: dimensions.height ?? null,
+        },
+        include: withCollection,
+      });
+    } catch (error) {
+      await deleteObjects([storageKey]);
+      throw error;
+    }
+
+    await deleteObjects([previousKey, ...derivatives.map((item) => item.storageKey)]);
+    await deleteVideoStream(previousStreamKey);
+
+    const dto = toFileDto(updated, ctx.cloudName);
+    recordUsage(ctx.accountId, UsageKind.UPLOAD, source.size, ctx.apiKeyId);
+    if (previousSize > 0) recordUsage(ctx.accountId, UsageKind.DELETE, previousSize, ctx.apiKeyId);
+    logActivity(ctx, 'file.replaced', updated.originalName);
+    dispatchWebhooks(ctx.accountId, 'file.uploaded', dto);
+
+    if (kindForExtension(ext) === 'video') {
+      const packagingPath = `${tempUploadPath()}.${ext}`;
+      await copyFile(stored.path, packagingPath);
+      enqueueVideoStream({ id: updated.id, accountId: ctx.accountId, ext, storageKey, streamKey: null }, packagingPath);
+    }
+
+    return { message: 'File content replaced', data: dto };
+  } finally {
+    await stored.cleanup();
+  }
 }
 
 export interface BulkAccessInput {

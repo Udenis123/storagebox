@@ -146,6 +146,17 @@ export class StorageBox {
     update: (publicId: string, input: UpdateFileInput): Promise<StoredFile> =>
       this.request("PATCH", `/files/${encodeURIComponent(publicId)}`, input),
 
+    /**
+     * Replace the stored bytes while keeping the same `publicId` and share URL.
+     * The new file must use the same extension (e.g. `.mp4` → `.mp4`).
+     */
+    replace: async (publicId: string, source: UploadSource): Promise<StoredFile> => {
+      const form = new FormData();
+      const { blob, filename } = toBlobPart(source);
+      form.append("file", blob, filename);
+      return this.request<StoredFile>("POST", `/files/${encodeURIComponent(publicId)}/replace`, form);
+    },
+
     delete: (publicId: string): Promise<void> => this.request("DELETE", `/files/${encodeURIComponent(publicId)}`),
 
     /** Make files public or private in one call. */

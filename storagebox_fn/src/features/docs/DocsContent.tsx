@@ -11,6 +11,7 @@ export const DOC_SECTIONS = [
   { id: "quick-start", title: "Quick start" },
   { id: "authentication", title: "Authentication" },
   { id: "upload", title: "Upload files" },
+  { id: "replace", title: "Replace content" },
   { id: "bulk-import", title: "Import a big folder" },
   { id: "list", title: "List and search" },
   { id: "collections", title: "Collections" },
@@ -219,6 +220,23 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
           Uploads are optimised automatically: JPG, PNG, WebP and AVIF photos lose their camera data and are re-encoded at high quality (and
           capped at 4096 px), and TXT, CSV, JSON, Markdown and SVG are stored compressed. Your links still return the full file. PDF, Office files
           and video are stored exactly as uploaded. The file record shows <code>sizeBytes</code> (stored) and <code>originalSizeBytes</code>.
+        </Note>
+      </DocSection>
+
+      <DocSection id="replace" title="Replace content">
+        <Prose>
+          <p>
+            When a shared link is already in the wild, replace the file&apos;s bytes instead of uploading a new one. The{" "}
+            <code>/f/{"{cloud}"}/{"{publicId}"}.{"{ext}"}</code> URL stays the same. The new file must use the same extension (for example{" "}
+            <code>.mp4</code> → <code>.mp4</code>). Videos re-package adaptive HLS in the background after replace.
+          </p>
+        </Prose>
+        <CodeBlock
+          code={`// SDK\nawait storagebox.files.replace("inuma-promo", {\n  data: await readFile("inuma-promo-v2.mp4"),\n  filename: "inuma-promo-v2.mp4",\n});\n\n// REST\ncurl -u "$STORAGEBOX_API_KEY:$STORAGEBOX_API_SECRET" \\\n  -F "file=@inuma-promo-v2.mp4" \\\n  ${API_BASE_URL}/v1/files/inuma-promo/replace`}
+        />
+        <Note>
+          Public links may be cached for up to a day. After replace, refreshed clients pick up the new bytes via ETag / Last-Modified. In the
+          dashboard, open the file and use <strong>Replace content</strong>.
         </Note>
       </DocSection>
 

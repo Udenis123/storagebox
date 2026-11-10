@@ -44,6 +44,10 @@ export const extensionOf = (fileName: string): string => {
   return dot >= 0 ? fileName.slice(dot + 1).toLowerCase() : '';
 };
 
+/** True when `nextFileName` ends with the same extension as the stored file (share URL stays valid). */
+export const hasSameExtension = (currentExt: string, nextFileName: string): boolean =>
+  extensionOf(nextFileName) === currentExt.toLowerCase();
+
 export const isAllowedExtension = (ext: string): boolean => ext in FILE_TYPES;
 
 export const mimeForExtension = (ext: string): string => FILE_TYPES[ext]?.mime ?? 'application/octet-stream';

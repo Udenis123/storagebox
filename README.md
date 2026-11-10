@@ -49,6 +49,7 @@ Everyone else uses **Request an account**. New accounts stay pending until an ad
 - **Access.** New files and collections are `PRIVATE`. `PUBLIC` files have permanent links that are cached for a day. `PRIVATE` files can only be opened with a signed link that expires after 1 minute to 7 days. Opening a private permanent URL in a browser shows that the owner made the file private. Signing uses HMAC-SHA256 with `SIGNING_SECRET`.
 - **Transformations.** Add a segment such as `w_400,h_300,c_fill,f_webp` to the URL of any image. Each variant is generated once with sharp and then cached in RustFS.
 - **Previews.** The dashboard previews images, PDFs, Word (.docx) files, video, audio and text. Videos are packaged into adaptive HLS (480p–1080p) after upload so shared links switch quality with bandwidth and preload ahead.
+- **Replace content.** Swap a file's bytes while keeping the same `/f/{cloud}/{publicId}.{ext}` share link (same extension required). Videos re-package HLS in the background.
 - **Developer API (`/v1`).** Like Cloudinary, each account has a cloud name, a 15-digit API key and an API secret. Authenticate with HTTP Basic auth (key:secret); the optional `x-cloud-name` header must match the key's account. Keys can be `READ` or `READ_WRITE` and are rate limited per minute.
 - **Webhooks** fire on `file.uploaded` and `file.deleted`. Each one is signed in the `x-storagebox-signature` header.
 - **Usage and activity.** Usage tracks storage, uploads, deliveries and transforms per day. The activity log records who did what.

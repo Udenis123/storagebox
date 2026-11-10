@@ -15,6 +15,7 @@ import {
   fileContentHandler,
   getFileHandler,
   listFilesHandler,
+  replaceFileHandler,
   signedLinkHandler,
   updateFileHandler,
   uploadFilesHandler,
@@ -49,6 +50,7 @@ export function fileRoutes(refParam: ':id' | ':publicId', write: RequestHandler 
   router.post('/bulk-access', write, validation(schemas.bulkAccessSchema), bulkAccessHandler);
   router.get(`/${refParam}`, getFileHandler);
   router.get(`/${refParam}/content`, fileContentHandler);
+  router.post(`/${refParam}/replace`, write, ...acceptUploads, replaceFileHandler);
   router.patch(`/${refParam}`, write, validation(schemas.updateFileSchema), updateFileHandler);
   router.delete(`/${refParam}`, write, deleteFileHandler);
   router.post(`/${refParam}/signed-url`, validation(schemas.signedLinkSchema), signedLinkHandler);

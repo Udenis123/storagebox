@@ -1,5 +1,6 @@
-import { useMemo, useState, type KeyboardEvent } from "react";
-import { Globe, Loader2, Lock, Plus, X } from "lucide-react";
+import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { Globe, Loader2, Lock, Plus, RefreshCw, X } from "lucide-react";
+import { toast } from "sonner";
 import { CopyField } from "@/components/shared/CopyField";
 import { FormField, INPUT_CLASS } from "@/components/shared/FormField";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
@@ -10,7 +11,7 @@ import { formatBytes, formatDateTime } from "@/lib/format";
 import type { StoredFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { UNSORTED } from "../CollectionTree";
-import { useCollections, useUpdateFile } from "../hooks";
+import { useCollections, useReplaceFile, useUpdateFile } from "../hooks";
 
 const PUBLIC_ID_PATTERN = /^[a-zA-Z0-9_-]{1,120}$/;
 const MAX_TAG_LENGTH = 40;
@@ -99,6 +100,54 @@ function TagEditor({ file }: { file: StoredFile }) {
         />
         {updateFile.isPending ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : draft && <Plus className="size-4 text-muted-foreground" />}
       </div>
+    </div>
+  );
+}
+
+function extensionOf(fileName: string): string {
+  const dot = fileName.lastIndexOf(".");
+  return dot >= 0 ? fileName.slice(dot + 1).toLowerCase() : "";
+}
+
+function ReplaceContentCard({ file }: { file: StoredFile }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const replaceFile = useReplaceFile(() => setProgress(null));
+
+  const onPick = (event: ChangeEvent<HTMLInputElement>) => {
+    const next = event.target.files?.[0];
+    event.target.value = "";
+    if (!next) return;
+    if (extensionOf(next.name) !== file.ext.toLowerCase()) {
+      toast.error(`Choose a .${file.ext} file so the share link stays valid`);
+      return;
+    }
+    setProgress(0);
+    replaceFile.mutate(
+      { id: file.id, file: next, onProgress: setProgress },
+      { onError: () => setProgress(null) },
+    );
+  };
+
+  return (
+    <div className="grid gap-2 rounded-lg border bg-muted/30 p-3">
+      <div className="grid gap-0.5">
+        <span className="text-sm font-semibold">Replace content</span>
+        <span className="text-xs text-muted-foreground">
+          Upload a new .{file.ext} file. The share link stays the same; videos re-package adaptive streaming in the background.
+        </span>
+      </div>
+      <input ref={inputRef} type="file" className="hidden" accept={`.${file.ext}`} onChange={onPick} />
+      <Button
+        type="button"
+        variant="outline"
+        className="justify-self-start bg-background"
+        disabled={replaceFile.isPending}
+        onClick={() => inputRef.current?.click()}
+      >
+        {replaceFile.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+        {replaceFile.isPending ? (progress !== null ? `Uploading ${progress}%` : "Replacing…") : "Choose file"}
+      </Button>
     </div>
   );
 }
@@ -198,6 +247,7 @@ export function AssetSummary({ file }: { file: StoredFile }) {
 
       <div className="grid gap-4 border-t pt-5">
         <h3 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Edit</h3>
+        <ReplaceContentCard key={`replace-${file.id}-${file.updatedAt}`} file={file} />
         <EditForm key={`${file.id}-${file.updatedAt}`} file={file} />
       </div>
 

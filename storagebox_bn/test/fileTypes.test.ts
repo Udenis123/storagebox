@@ -1,6 +1,7 @@
 import {
   extensionForMime,
   extensionOf,
+  hasSameExtension,
   isAllowedExtension,
   isTransformable,
   kindForExtension,
@@ -33,6 +34,12 @@ describe('file type policy', () => {
     expect(isTransformable('jpg')).toBe(true);
     expect(isTransformable('svg')).toBe(false);
     expect(isTransformable('pdf')).toBe(false);
+  });
+
+  it('requires the same extension when replacing content in place', () => {
+    expect(hasSameExtension('mp4', 'promo-v2.MP4')).toBe(true);
+    expect(hasSameExtension('mp4', 'promo.mov')).toBe(false);
+    expect(hasSameExtension('jpg', 'photo.jpeg')).toBe(false);
   });
 });
 
