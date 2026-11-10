@@ -36,7 +36,7 @@ export function AdaptiveVideo({
     const progressive = posterTime !== undefined ? `${src}#t=${posterTime}` : src;
     let hls: Hls | undefined;
 
-    const useProgressive = () => {
+    const loadProgressive = () => {
       video.src = progressive;
       video.load();
     };
@@ -56,12 +56,12 @@ export function AdaptiveVideo({
         if (!data.fatal) return;
         hls?.destroy();
         hls = undefined;
-        useProgressive();
+        loadProgressive();
       });
     } else if (streamSrc && video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = streamSrc;
     } else {
-      useProgressive();
+      loadProgressive();
     }
 
     return () => {
