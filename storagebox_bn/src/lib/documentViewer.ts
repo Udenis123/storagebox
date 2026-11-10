@@ -40,6 +40,7 @@ export const VIEWER_ASSETS: Record<string, string> = {
   'docx-preview.min.js': packageFile('docx-preview', 'docx-preview.min.js'),
   'jszip.min.js': require.resolve('jszip/dist/jszip.min.js'),
   'xlsx.full.min.js': require.resolve('xlsx/dist/xlsx.full.min.js'),
+  'hls.min.js': require.resolve('hls.js/dist/hls.min.js'),
 };
 
 /** PDF.js is an ES module, imported on demand by the page script rather than listed here. */
@@ -50,7 +51,7 @@ const SCRIPTS_BY_KIND: Record<ViewerKind, string[]> = {
   sheet: ['xlsx.full.min.js'],
   text: [],
   office: [],
-  video: [],
+  video: ['hls.min.js'],
   audio: [],
 };
 
@@ -63,6 +64,8 @@ export interface ViewerPage {
   /** Same-origin URL that returns the raw bytes (keeps any signature). */
   rawPath: string;
   downloadPath: string;
+  /** Adaptive HLS master playlist when available (keeps any signature). */
+  streamPath?: string;
   /** Absolute raw URL when the API is publicly reachable — required by Office Online. */
   publicRawUrl?: string;
   /** Shown inside another app (the dashboard), which already has its own name and download controls. */
@@ -105,10 +108,14 @@ body.media main{display:grid;place-items:center;overflow:hidden;padding:16px;bac
 /** Self-contained page that renders a document the browser would otherwise download. */
 export function renderViewerPage(page: ViewerPage): { html: string; csp: string } {
   const nonce = randomBytes(16).toString('base64');
-  const config = JSON.stringify({ kind: page.kind, rawPath: page.rawPath, publicRawUrl: page.publicRawUrl ?? null, officeEmbedUrl: OFFICE_EMBED_URL, assetBase: `/f/${VIEWER_ASSET_PREFIX}/` }).replace(
-    /</g,
-    '\\u003c',
-  );
+  const config = JSON.stringify({
+    kind: page.kind,
+    rawPath: page.rawPath,
+    streamPath: page.streamPath ?? null,
+    publicRawUrl: page.publicRawUrl ?? null,
+    officeEmbedUrl: OFFICE_EMBED_URL,
+    assetBase: `/f/${VIEWER_ASSET_PREFIX}/`,
+  }).replace(/</g, '\\u003c');
   const scripts = SCRIPTS_BY_KIND[page.kind].map((name) => `<script src="/f/${VIEWER_ASSET_PREFIX}/${name}"></script>`).join('');
   const name = escapeHtml(page.fileName);
   const header = page.isEmbedded
@@ -153,10 +160,17 @@ else if(cfg.kind==='text'){fetchRaw('text').then(function(text){view.innerHTML='
 else if(cfg.kind==='video'||cfg.kind==='audio'){
   view.innerHTML='';
   var media=document.createElement(cfg.kind);
-  media.controls=true;media.autoplay=true;media.preload='metadata';media.setAttribute('playsinline','');
-  media.className='player';media.src=cfg.rawPath;
+  media.controls=true;media.autoplay=true;media.preload='auto';media.setAttribute('playsinline','');
+  media.className='player';
   media.addEventListener('error',fail);
   view.appendChild(media);
+  if(cfg.kind==='video'&&cfg.streamPath&&window.Hls&&window.Hls.isSupported()){
+    var hls=new window.Hls({enableWorker:true,lowLatencyMode:false,maxBufferLength:60,maxMaxBufferLength:120,startLevel:-1});
+    hls.loadSource(cfg.streamPath);hls.attachMedia(media);
+    hls.on(window.Hls.Events.ERROR,function(_e,data){if(data.fatal){hls.destroy();media.src=cfg.rawPath;media.load()}});
+  }else if(cfg.kind==='video'&&cfg.streamPath&&media.canPlayType('application/vnd.apple.mpegurl')){
+    media.src=cfg.streamPath;
+  }else{media.src=cfg.rawPath}
 }
 else if(cfg.publicRawUrl){view.innerHTML='';var frame=document.createElement('iframe');frame.title='Document preview';frame.src=cfg.officeEmbedUrl+encodeURIComponent(cfg.publicRawUrl);view.appendChild(frame)}
 else{message('A preview for this file type is available once StorageBox is online. Use Download to open it on your device.')}

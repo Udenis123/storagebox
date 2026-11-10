@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ChevronLeft, ChevronRight, Download, ExternalLink, X } from "lucide-react";
-import { applyTransform, downloadUrl, embeddedViewerUrl, isTransformable, previewKindOf } from "@/lib/files";
+import { AdaptiveVideo } from "@/components/shared/AdaptiveVideo";
+import { applyTransform, downloadUrl, embeddedViewerUrl, isTransformable, previewKindOf, streamUrlFor } from "@/lib/files";
 import { formatBytes } from "@/lib/format";
 import type { StoredFile } from "@/lib/types";
 
@@ -27,7 +28,9 @@ function Stage({ file }: { file: StoredFile }) {
       />
     );
   }
-  if (preview === "video") return <video key={file.id} src={url} controls autoPlay playsInline className="max-h-full max-w-full rounded-lg" />;
+  if (preview === "video") {
+    return <AdaptiveVideo key={file.id} src={url} streamSrc={streamUrlFor(file, url)} autoPlay className="max-h-full max-w-full rounded-lg" />;
+  }
   if (preview === "audio") return <audio key={file.id} src={url} controls autoPlay className="w-full max-w-xl" />;
   return <iframe key={file.id} src={embeddedViewerUrl(url)} title={file.originalName} className="size-full max-w-5xl rounded-lg bg-white" />;
 }

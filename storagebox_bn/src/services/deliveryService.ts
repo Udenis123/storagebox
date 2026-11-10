@@ -7,9 +7,10 @@ import prisma from '@/config/prisma';
 import { DeliveryTarget, verifyDeliverySignature } from '@/lib/deliveryUrl';
 import { GZIP_ENCODING } from '@/lib/optimizeUpload';
 import { renderViewerPage, ViewerKind, viewerKindFor } from '@/lib/documentViewer';
-import { isTransformable } from '@/lib/fileTypes';
+import { isTransformable, kindForExtension } from '@/lib/fileTypes';
 import { getObject, getObjectBuffer, putObject } from '@/lib/storage';
 import { applyTransform, parseTransform, TransformParseError } from '@/lib/transform';
+import { rewritePlaylistUrls } from '@/lib/hlsPlaylist';
 import { ownerMadePrivateCopy } from '@/lib/privateFile';
 import { FileAccess } from '@/types/api';
 import ApiError from '@/utils/ApiError';
@@ -18,6 +19,7 @@ import { sha256Hex } from '@/utils/crypto';
 import { ERROR_CODES } from '@/utils/errorCodes';
 import { formatBytes } from '@/utils/units';
 import { recordUsage } from './usageService';
+import { enqueueVideoStream } from './videoStreamService';
 
 const PUBLIC_CACHE = 'public, max-age=86400, stale-while-revalidate=604800';
 const VIEWER_FILE_CACHE = 'private, no-cache';
@@ -123,14 +125,26 @@ function withQuery(requestPath: string, set: Record<string, string>, remove: str
   return `${url.pathname}${url.search}`;
 }
 
-function viewerResponse(file: File, kind: ViewerKind, requestPath: string): DeliveryResponse {
+function viewerResponse(file: File, kind: ViewerKind, requestPath: string, cloudName: string): DeliveryResponse {
   const isEmbedded = new URL(requestPath, 'http://storagebox.local').searchParams.get('embed') === '1';
   const rawPath = withQuery(requestPath, { raw: '1' }, ['dl', 'embed']);
+  const requestUrl = new URL(requestPath, 'http://storagebox.local');
+  const authQuery = new URLSearchParams();
+  for (const key of ['expires', 'sig'] as const) {
+    const value = requestUrl.searchParams.get(key);
+    if (value) authQuery.set(key, value);
+  }
+  const streamQuery = authQuery.toString();
+  const streamPath = file.streamKey
+    ? `/f/${cloudName}/_stream/${file.publicId}/index.m3u8${streamQuery ? `?${streamQuery}` : ''}`
+    : undefined;
+  if (kind === 'video' && !file.streamKey) enqueueVideoStream(file);
   const { html, csp } = renderViewerPage({
     kind,
     fileName: file.originalName,
     sizeLabel: `${file.ext.toUpperCase()} · ${formatBytes(Number(file.sizeBytes))}`,
     rawPath,
+    streamPath,
     downloadPath: withQuery(requestPath, { dl: '1' }, ['raw', 'embed']),
     publicRawUrl: isPubliclyReachable(config.publicUrl) ? `${config.publicUrl}${rawPath}` : undefined,
     isEmbedded,
@@ -180,7 +194,7 @@ export async function deliver(request: DeliveryRequest): Promise<DeliveryRespons
   const expires = assertAccess(file, target, request);
   const viewerKind = viewerKindFor(normalizeExt(file.ext));
   if (viewerKind && request.viewerPath && !request.transform && !request.isDownload) {
-    return viewerResponse(file, viewerKind, request.viewerPath);
+    return viewerResponse(file, viewerKind, request.viewerPath, request.cloudName);
   }
 
   const etag = etagFor(file, request.transform);
@@ -246,4 +260,64 @@ export async function deliverOwnFile(file: File, request: OwnFileRequest): Promi
   };
   if (request.ifNoneMatch === etag) return { statusCode: status.NOT_MODIFIED, headers: baseHeaders };
   return originalResponse(file, baseHeaders, request);
+}
+
+export interface StreamDeliveryRequest {
+  cloudName: string;
+  publicId: string;
+  /** Path under the stream prefix, e.g. `index.m3u8` or `0/seg_001.ts`. */
+  assetPath: string;
+  expires?: unknown;
+  sig?: unknown;
+  /** Original request query string (without `?`) so playlist URIs stay signed. */
+  query?: string;
+  range?: string;
+}
+
+const SAFE_STREAM_ASSET = /^(index\.m3u8|[0-9]+\/(playlist\.m3u8|seg_\d+\.ts))$/;
+
+/** Serves one HLS playlist or segment for a video that has finished packaging. */
+export async function deliverStream(request: StreamDeliveryRequest): Promise<DeliveryResponse> {
+  if (!SAFE_STREAM_ASSET.test(request.assetPath)) throw notFound();
+  const account = await prisma.account.findUnique({ where: { cloudName: request.cloudName }, select: { id: true, isSuspended: true } });
+  if (!account || account.isSuspended) throw notFound();
+  const file = await prisma.file.findUnique({ where: { accountId_publicId: { accountId: account.id, publicId: request.publicId } } });
+  if (!file?.streamKey) {
+    if (file && kindForExtension(file.ext) === 'video') enqueueVideoStream(file);
+    throw notFound();
+  }
+  assertAccess(file, { cloudName: request.cloudName, publicId: file.publicId, ext: file.ext }, {
+    cloudName: request.cloudName,
+    asset: `${file.publicId}.${file.ext}`,
+    expires: request.expires,
+    sig: request.sig,
+    isDownload: false,
+  });
+
+  const key = `${file.streamKey}/${request.assetPath}`;
+  if (request.assetPath.endsWith('.m3u8')) {
+    const raw = (await getObjectBuffer(key)).toString('utf8');
+    const body = Buffer.from(rewritePlaylistUrls(raw, request.query ?? ''));
+    return {
+      statusCode: status.OK,
+      headers: {
+        'Content-Type': 'application/vnd.apple.mpegurl',
+        'Content-Length': String(body.length),
+        'Cache-Control': file.access === FileAccess.PUBLIC ? PUBLIC_CACHE : 'private, max-age=60',
+        'X-Content-Type-Options': 'nosniff',
+      },
+      body,
+    };
+  }
+
+  const object = await getObject(key, request.range);
+  const headers: Record<string, string> = {
+    'Content-Type': 'video/mp2t',
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': file.access === FileAccess.PUBLIC ? PUBLIC_CACHE : 'private, max-age=3600',
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (object.contentLength !== undefined) headers['Content-Length'] = String(object.contentLength);
+  if (object.contentRange) headers['Content-Range'] = object.contentRange;
+  return { statusCode: object.contentRange ? status.PARTIAL_CONTENT : status.OK, headers, body: object.body };
 }

@@ -4,9 +4,13 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { createReadStream } from 'fs';
+import { readFile, stat } from 'fs/promises';
+import path from 'path';
 import { Upload } from '@aws-sdk/lib-storage';
 import { config } from '@/config/config';
 import logger from '@/config/logger';
@@ -64,6 +68,42 @@ export async function getObjectBuffer(key: string): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+export async function listObjectKeys(prefix: string): Promise<string[]> {
+  const keys: string[] = [];
+  let token: string | undefined;
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({ Bucket: config.s3.bucket, Prefix: prefix, ContinuationToken: token }),
+    );
+    for (const object of page.Contents ?? []) {
+      if (object.Key) keys.push(object.Key);
+    }
+    token = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (token);
+  return keys;
+}
+
+/** Uploads every file under `localDir` to `prefix/` (relative paths preserved). */
+export async function putDirectory(prefix: string, localDir: string, files: string[]): Promise<void> {
+  for (const relative of files) {
+    const key = `${prefix}/${relative}`.replace(/\/+/g, '/');
+    const filePath = path.join(localDir, relative);
+    const contentType = contentTypeFor(relative);
+    const { size } = await stat(filePath);
+    if (size < MULTIPART_PART_BYTES) {
+      await putObject(key, await readFile(filePath), contentType);
+    } else {
+      await putObjectStream(key, createReadStream(filePath), contentType);
+    }
+  }
+}
+
+const contentTypeFor = (fileName: string): string => {
+  if (fileName.endsWith('.m3u8')) return 'application/vnd.apple.mpegurl';
+  if (fileName.endsWith('.ts')) return 'video/mp2t';
+  return 'application/octet-stream';
+};
+
 /** Best-effort: storage cleanup must never block the metadata change that triggered it. */
 export async function deleteObjects(keys: string[]): Promise<void> {
   for (let start = 0; start < keys.length; start += DELETE_BATCH_SIZE) {
@@ -79,4 +119,9 @@ export async function deleteObjects(keys: string[]): Promise<void> {
       logger.warn(`Could not delete ${batch.length} stored object(s)`, error);
     }
   }
+}
+
+export async function deletePrefix(prefix: string): Promise<void> {
+  const keys = await listObjectKeys(prefix.endsWith('/') ? prefix : `${prefix}/`);
+  if (keys.length) await deleteObjects(keys);
 }

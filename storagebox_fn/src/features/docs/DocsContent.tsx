@@ -332,8 +332,9 @@ export function DocsContent({ cloudName = "acme" }: { cloudName?: string }) {
         <Prose>
           <p>
             PDF, Word, Excel, CSV, Markdown, video and audio links open in a built-in viewer when someone visits them in a browser — so a shared
-            <code>.mov</code> plays instead of downloading. Your code still receives the original bytes. Add <code>?raw=1</code> to always get the
-            file itself, or <code>?dl=1</code> to download it. Private files show a clear message instead of the file.
+            <code>.mov</code> plays instead of downloading. Videos are packaged into adaptive HLS after upload, so playback switches quality with the
+            viewer&apos;s bandwidth and preloads ahead like YouTube. Your code still receives the original bytes. Add <code>?raw=1</code> to always
+            get the file itself, or <code>?dl=1</code> to download it. Private files show a clear message instead of the file.
           </p>
         </Prose>
       </DocSection>

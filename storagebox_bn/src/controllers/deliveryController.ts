@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import status from 'http-status';
 import { renderAccessDeniedPage } from '@/lib/accessDeniedPage';
 import { VIEWER_ASSETS } from '@/lib/documentViewer';
-import { deliver } from '@/services/deliveryService';
+import { deliver, deliverStream } from '@/services/deliveryService';
 import ApiError from '@/utils/ApiError';
 import catchAsync from '@/utils/catchAsync';
 import { ERROR_CODES } from '@/utils/errorCodes';
@@ -66,6 +66,32 @@ export const deliveryHandler = catchAsync(async (req: Request, res: Response) =>
         ifNoneMatch: req.headers['if-none-match'],
         viewerPath: isBrowserNavigation(req) ? req.originalUrl : undefined,
         acceptsGzip: req.acceptsEncodings('gzip') === 'gzip',
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ApiError && ACCESS_DENIED_CODES.has(error.errorCode) && isBrowserNavigation(req)) {
+      sendAccessDeniedPage(res, error);
+      return;
+    }
+    throw error;
+  }
+});
+
+export const streamHandler = catchAsync(async (req: Request, res: Response) => {
+  const variant = param(req, 'variant');
+  const fileName = typeof req.params.file === 'string' ? req.params.file : undefined;
+  const assetPath = fileName ? `${variant}/${fileName}` : variant;
+  const query = new URL(req.originalUrl, 'http://storagebox.local').search.replace(/^\?/, '');
+  try {
+    await sendDelivery(res, () =>
+      deliverStream({
+        cloudName: param(req, 'cloudName'),
+        publicId: param(req, 'publicId'),
+        assetPath,
+        expires: req.query.expires,
+        sig: req.query.sig,
+        query,
+        range: req.headers.range,
       }),
     );
   } catch (error) {

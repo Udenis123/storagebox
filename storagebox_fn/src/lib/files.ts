@@ -59,6 +59,25 @@ export const embeddedViewerUrl = (url: string): string => `${url}${url.includes(
 /** Appends `dl=1` so the delivery route answers with `Content-Disposition: attachment`. */
 export const downloadUrl = (url: string): string => `${url}${url.includes("?") ? "&" : "?"}dl=1`;
 
+/** Rewrites a delivery URL to the adaptive HLS master playlist, keeping signed query params. */
+export function adaptiveStreamUrl(deliveryUrl: string, publicId: string): string | undefined {
+  try {
+    const url = new URL(deliveryUrl);
+    const match = url.pathname.match(/^\/f\/([^/]+)\//);
+    if (!match) return undefined;
+    url.pathname = `/f/${match[1]}/_stream/${publicId}/index.m3u8`;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+export function streamUrlFor(file: Pick<StoredFile, "publicId" | "streamUrl" | "streamReady">, deliveryUrl?: string): string | undefined {
+  if (file.streamUrl) return file.streamUrl;
+  if (file.streamReady && deliveryUrl) return adaptiveStreamUrl(deliveryUrl, file.publicId);
+  return undefined;
+}
+
 export const fileTypeLabel = (file: Pick<StoredFile, "ext">): string => file.ext.toUpperCase();
 
 const FORMAT_NAMES: Record<string, string> = {

@@ -1,17 +1,19 @@
 import { randomUUID } from 'crypto';
 import { createReadStream } from 'fs';
+import { copyFile } from 'fs/promises';
 import { Prisma, UsageKind } from '@prisma/client';
 import status from 'http-status';
 import sharp from 'sharp';
 import prisma from '@/config/prisma';
 import logger from '@/config/logger';
 import { signedUrl } from '@/lib/deliveryUrl';
-import { extensionOf, extensionsForKind, isAllowedExtension, isTransformable, mimeForExtension } from '@/lib/fileTypes';
+import { extensionOf, extensionsForKind, isAllowedExtension, isTransformable, kindForExtension, mimeForExtension } from '@/lib/fileTypes';
 import { deleteObjects, putObjectStream } from '@/lib/storage';
 import { prepareForStorage, PreparedUpload } from '@/lib/optimizeUpload';
-import { sha256File } from '@/lib/tempFiles';
+import { sha256File, tempUploadPath } from '@/lib/tempFiles';
 import { parseTransform, TransformParseError } from '@/lib/transform';
 import { AccountContext, DEFAULT_FILE_ACCESS, FileAccess, FileDto, FileKind } from '@/types/api';
+import { deleteVideoStream, enqueueVideoStream } from './videoStreamService';
 import ApiError from '@/utils/ApiError';
 import { randomSuffix } from '@/utils/crypto';
 import { toFileDto } from '@/utils/dto';
@@ -150,7 +152,13 @@ async function storeOne(
   try {
     const dimensions = await imageDimensions(stored.path, ext);
     await putObjectStream(storageKey, createReadStream(stored.path), mime);
-    return await recordStoredFile(ctx, { source, stored, collection, options, publicId, mime, ext, storageKey, checksum, dimensions });
+    const dto = await recordStoredFile(ctx, { source, stored, collection, options, publicId, mime, ext, storageKey, checksum, dimensions });
+    if (kindForExtension(ext) === 'video') {
+      const packagingPath = `${tempUploadPath()}.${ext}`;
+      await copyFile(stored.path, packagingPath);
+      enqueueVideoStream({ id: dto.id, accountId: ctx.accountId, ext, storageKey, streamKey: null }, packagingPath);
+    }
+    return dto;
   } finally {
     await stored.cleanup();
   }
@@ -321,6 +329,7 @@ export async function deleteFiles(ctx: AccountContext, refs: FileRef[]): Promise
 
   await prisma.file.deleteMany({ where: { id: { in: files.map((file) => file.id) } } });
   await deleteObjects(files.flatMap((file) => [file.storageKey, ...file.derivatives.map((d) => d.storageKey)]));
+  await Promise.all(files.map((file) => deleteVideoStream(file.streamKey)));
 
   for (const file of files) {
     const dto = toFileDto(file, ctx.cloudName);

@@ -20,6 +20,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
     "docx-preview": "^0.4.1",
+    "hls.js": "^1.7.4",
     "lucide-react": "^1.48.0",
     "pdfjs-dist": "^6.4.299",
     "pptx-preview": "^1.0.7",

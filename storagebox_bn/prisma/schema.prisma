@@ -133,6 +133,8 @@ model File {
   checksum          String
   access            FileAccess @default(PRIVATE)
   storageKey        String     @unique
+  /// S3 prefix of the HLS adaptive stream (`…/index.m3u8` + quality variants). Null until packaging finishes.
+  streamKey         String?
   width             Int?
   height            Int?
   tags              String[]   @default([])

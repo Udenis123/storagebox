@@ -43,6 +43,10 @@ export interface FileDto {
   collectionId?: string;
   collectionPath?: string;
   url?: string;
+  /** Adaptive HLS master playlist for public files when packaging has finished. */
+  streamUrl?: string;
+  /** True once multi-bitrate HLS packaging finished (private files use a signed delivery URL rewritten to `/_stream/…`). */
+  streamReady?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

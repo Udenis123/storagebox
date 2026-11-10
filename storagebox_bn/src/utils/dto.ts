@@ -8,6 +8,7 @@ type FileWithCollection = File & { collection?: Pick<Collection, 'path'> | null 
 
 export function toFileDto(file: FileWithCollection, cloudName: string): FileDto {
   const isPublic = file.access === FileAccess.PUBLIC;
+  const delivery = isPublic ? publicUrl({ cloudName, publicId: file.publicId, ext: file.ext }) : undefined;
   return {
     id: file.id,
     publicId: file.publicId,
@@ -24,7 +25,9 @@ export function toFileDto(file: FileWithCollection, cloudName: string): FileDto 
     tags: file.tags,
     collectionId: file.collectionId ?? undefined,
     collectionPath: file.collection?.path,
-    url: isPublic ? publicUrl({ cloudName, publicId: file.publicId, ext: file.ext }) : undefined,
+    url: delivery,
+    streamUrl: isPublic && file.streamKey ? `${config.publicUrl}/f/${cloudName}/_stream/${file.publicId}/index.m3u8` : undefined,
+    streamReady: Boolean(file.streamKey),
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
   };

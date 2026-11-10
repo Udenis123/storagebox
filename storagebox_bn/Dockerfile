@@ -24,7 +24,8 @@ RUN npm run build \
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=4200
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+# ffmpeg builds adaptive HLS streams (multi-bitrate) after video uploads.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates ffmpeg \
   && rm -rf /var/lib/apt/lists/* \
   && addgroup --system --gid 10001 storagebox \
   && adduser --system --uid 10001 --ingroup storagebox storagebox

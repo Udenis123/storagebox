@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
+import { AdaptiveVideo } from "@/components/shared/AdaptiveVideo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { downloadUrl, embeddedViewerUrl, previewKindOf } from "@/lib/files";
+import { downloadUrl, embeddedViewerUrl, previewKindOf, streamUrlFor } from "@/lib/files";
 import type { StoredFile } from "@/lib/types";
 import { FileKindIcon } from "./FileThumb";
 import { useViewUrl } from "./hooks";
@@ -107,13 +108,11 @@ export function FilePreview({ file, isFill = false }: { file: StoredFile; isFill
       return <iframe src={embeddedViewerUrl(url)} title={file.originalName} className={`${frame} bg-white`} />;
     case "video":
       return (
-        <video
+        <AdaptiveVideo
           key={url}
           src={url}
-          controls
-          playsInline
-          preload="metadata"
-          className={isFill ? "max-h-full max-w-full rounded-lg bg-black shadow-2xl shadow-black/50" : "max-h-[65vh] w-full rounded-lg bg-black"}
+          streamSrc={streamUrlFor(file, url)}
+          className={isFill ? "max-h-full max-w-full rounded-lg shadow-2xl shadow-black/50" : "max-h-[65vh] w-full rounded-lg"}
         />
       );
     case "audio":
